@@ -93,13 +93,14 @@ class AudioManager {
 
   void _listenForChangesInSequenceState() {
     _audioPlayer.sequenceStateStream.listen((sequenceState) {
-      if (sequenceState == null) return;
       final currentItem = sequenceState.currentSource;
       currentSongNotifier.value = currentItem?.tag as MediaItem?;
       isFirstSongNotifier.value = sequenceState.currentIndex == 0;
-      isLastSongNotifier.value =
-          sequenceState.effectiveSequence.length ==
-          sequenceState.currentIndex + 1;
+      if (sequenceState.currentIndex != null) {
+        isLastSongNotifier.value =
+            sequenceState.effectiveSequence.length ==
+            sequenceState.currentIndex! + 1;
+      }
     });
   }
 

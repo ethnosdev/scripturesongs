@@ -199,14 +199,37 @@ class _HomeScreenState extends State<HomeScreen> {
         return ListView.builder(
           itemCount: songs.length,
           itemBuilder: (context, index) {
+            final song = songs[index];
             return ListTile(
-              title: Text(songs[index].title),
-              subtitle: Text(songs[index].reference),
-              trailing: IconButton(
-                onPressed: () {
-                  // TODO: Implement more menu
-                },
+              title: Text(song.title),
+              subtitle: Text(song.reference),
+              trailing: PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  if (value == 'download') {
+                    _handleDownload(context, song);
+                  } else if (value == 'share') {
+                    _homeManager.shareSong(song);
+                  }
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'download',
+                    child: ListTile(
+                      leading: Icon(Icons.download),
+                      title: Text('Download'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'share',
+                    child: ListTile(
+                      leading: Icon(Icons.share),
+                      title: Text('Share'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
               ),
               onTap: () {
                 _audioManager.seek(Duration.zero, index: index);
@@ -217,5 +240,32 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  Future<void> _handleDownload(BuildContext context, Song song) async {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Downloading "${song.title}"...')));
+
+    try {
+      final message = await _homeManager.downloadSong(song);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
