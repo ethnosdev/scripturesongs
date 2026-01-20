@@ -155,9 +155,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              IconButton(
-                onPressed: _audioManager.previous,
-                icon: const Icon(Icons.skip_previous),
+              ValueListenableBuilder<bool>(
+                valueListenable: _audioManager.isFirstSongNotifier,
+                builder: (context, isFirst, _) {
+                  return IconButton(
+                    onPressed: isFirst ? null : _audioManager.previous,
+                    icon: const Icon(Icons.skip_previous),
+                  );
+                },
               ),
               ValueListenableBuilder<ButtonState>(
                 valueListenable: _audioManager.playButtonNotifier,
@@ -165,9 +170,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   switch (buttonState) {
                     case ButtonState.loading:
                       return const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 48,
+                        height: 48,
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
                       );
                     case ButtonState.paused:
                       return IconButton(
@@ -184,9 +195,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
               ),
-              IconButton(
-                onPressed: _audioManager.next,
-                icon: const Icon(Icons.skip_next),
+              ValueListenableBuilder<bool>(
+                valueListenable: _audioManager.isLastSongNotifier,
+                builder: (context, isLast, _) {
+                  return IconButton(
+                    onPressed: isLast ? null : _audioManager.next,
+                    icon: const Icon(Icons.skip_next),
+                  );
+                },
               ),
               ValueListenableBuilder<MediaItem?>(
                 valueListenable: _audioManager.currentSongNotifier,
@@ -257,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final isPlaying = currentMediaItem?.id == song.id;
                 return ListTile(
                   title: Text(
-                    song.title,
+                    '${song.id}. ${song.title}',
                     style: TextStyle(
                       fontWeight: isPlaying
                           ? FontWeight.bold
