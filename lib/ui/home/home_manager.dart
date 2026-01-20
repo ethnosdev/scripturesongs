@@ -87,7 +87,7 @@ class HomeManager {
 
       // 3. Create filename and check existence
       final cleanTitle = song.title.replaceAll(RegExp(r'[^\w\s\.-]'), '');
-      final fileName = '${song.reference} - $cleanTitle.mp3';
+      final fileName = '$cleanTitle.mp3';
       final savePath = '${directory.path}/$fileName';
       final file = File(savePath);
 

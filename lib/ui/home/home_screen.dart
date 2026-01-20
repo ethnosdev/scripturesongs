@@ -1,5 +1,6 @@
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:just_audio/just_audio.dart';
@@ -196,44 +197,60 @@ class _HomeScreenState extends State<HomeScreen> {
     return ValueListenableBuilder<List<Song>>(
       valueListenable: _homeManager.songs,
       builder: (context, songs, _) {
-        return ListView.builder(
-          itemCount: songs.length,
-          itemBuilder: (context, index) {
-            final song = songs[index];
-            return ListTile(
-              title: Text(song.title),
-              subtitle: Text(song.reference),
-              trailing: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (value) {
-                  if (value == 'download') {
-                    _handleDownload(context, song);
-                  } else if (value == 'share') {
-                    _homeManager.shareSong(song);
-                  }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'download',
-                    child: ListTile(
-                      leading: Icon(Icons.download),
-                      title: Text('Download'),
-                      contentPadding: EdgeInsets.zero,
+        return ValueListenableBuilder<MediaItem?>(
+          valueListenable: _audioManager.currentSongNotifier,
+          builder: (context, currentMediaItem, _) {
+            return ListView.builder(
+              itemCount: songs.length,
+              itemBuilder: (context, index) {
+                final song = songs[index];
+                final isPlaying = currentMediaItem?.id == song.id;
+                return ListTile(
+                  title: Text(
+                    song.title,
+                    style: TextStyle(
+                      fontWeight: isPlaying
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
-                  const PopupMenuItem<String>(
-                    value: 'share',
-                    child: ListTile(
-                      leading: Icon(Icons.share),
-                      title: Text('Share'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                  subtitle: Text(song.reference),
+                  selected: isPlaying,
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+
+                    onSelected: (value) {
+                      if (value == 'download') {
+                        _handleDownload(context, song);
+                      } else if (value == 'share') {
+                        _homeManager.shareSong(song);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'download',
+                            child: ListTile(
+                              leading: Icon(Icons.download),
+                              title: Text('Download'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'share',
+                            child: ListTile(
+                              leading: Icon(Icons.share),
+                              title: Text('Share'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
                   ),
-                ],
-              ),
-              onTap: () {
-                _audioManager.seek(Duration.zero, index: index);
-                _audioManager.play();
+                  onTap: () {
+                    _audioManager.seek(Duration.zero, index: index);
+                    _audioManager.play();
+                  },
+                );
               },
             );
           },

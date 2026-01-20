@@ -5,7 +5,7 @@ import 'package:scripturesongs/models/song.dart';
 
 class AudioManager {
   final _audioPlayer = AudioPlayer();
-  late ConcatenatingAudioSource _playlist;
+  late List<AudioSource> _playlist;
 
   final currentSongNotifier = ValueNotifier<MediaItem?>(null);
   final isFirstSongNotifier = ValueNotifier<bool>(true);
@@ -21,19 +21,14 @@ class AudioManager {
   final loopModeNotifier = ValueNotifier<LoopMode>(LoopMode.off);
 
   void initSongs(List<Song> songs) {
-    _playlist = ConcatenatingAudioSource(
-      children: songs.map((song) {
-        return LockCachingAudioSource(
-          Uri.parse(song.url),
-          tag: MediaItem(
-            id: song.id,
-            title: song.title,
-            artist: song.reference,
-          ),
-        );
-      }).toList(),
-    );
-    _audioPlayer.setAudioSource(_playlist);
+    _playlist = songs.map((song) {
+      return LockCachingAudioSource(
+        Uri.parse(song.url),
+        tag: MediaItem(id: song.id, title: song.title, artist: song.reference),
+      );
+    }).toList();
+
+    _audioPlayer.setAudioSources(_playlist);
 
     _listenForChangesInPlayerState();
     _listenForChangesInPlayerPosition();
