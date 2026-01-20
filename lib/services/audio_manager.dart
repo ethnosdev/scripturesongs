@@ -23,7 +23,7 @@ class AudioManager {
   void initSongs(List<Song> songs) {
     _playlist = ConcatenatingAudioSource(
       children: songs.map((song) {
-        return AudioSource.uri(
+        return LockCachingAudioSource(
           Uri.parse(song.url),
           tag: MediaItem(
             id: song.id,

@@ -31,21 +31,28 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Scripture Songs'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'settings') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              } else if (value == 'about') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const AboutScreen()),
+                );
+              }
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.info),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AboutScreen()),
-              );
-            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'settings',
+                child: Text('Settings'),
+              ),
+              const PopupMenuItem<String>(value: 'about', child: Text('About')),
+            ],
           ),
         ],
       ),
@@ -93,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 4.0),
                 ValueListenableBuilder(
                   valueListenable: _audioManager.currentSongNotifier,
-                  builder: (_, song, __) {
+                  builder: (context, song, _) {
                     return Text(
                       song?.artist ?? '',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -109,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Progress Bar
           ValueListenableBuilder<ProgressBarState>(
             valueListenable: _homeManager.progressNotifier,
-            builder: (_, progressBarState, __) {
+            builder: (context, progressBarState, _) {
               return ProgressBar(
                 progress: progressBarState.current,
                 buffered: progressBarState.buffered,
@@ -145,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               ValueListenableBuilder<ButtonState>(
                 valueListenable: _audioManager.playButtonNotifier,
-                builder: (_, buttonState, __) {
+                builder: (context, buttonState, _) {
                   switch (buttonState) {
                     case ButtonState.loading:
                       return const SizedBox(
