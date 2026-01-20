@@ -135,15 +135,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ValueListenableBuilder<LoopMode>(
                 valueListenable: _audioManager.loopModeNotifier,
                 builder: (context, loopMode, child) {
+                  final icon = switch (loopMode) {
+                    LoopMode.one => Icons.repeat_one, // Shows '1' inside arrows
+                    LoopMode.all => Icons.repeat, // Shows normal arrows
+                    LoopMode.off => Icons.repeat, // Shows normal arrows
+                  };
+                  final color = loopMode == LoopMode.off
+                      ? Theme.of(context).disabledColor
+                      : Theme.of(context).colorScheme.primary;
                   return IconButton(
                     onPressed: _audioManager.cycleLoopMode,
-                    icon: Icon(
-                      loopMode == LoopMode.off
-                          ? Icons.repeat
-                          : loopMode == LoopMode.one
-                          ? Icons.repeat_one
-                          : Icons.repeat,
-                    ),
+                    icon: Icon(icon),
+                    color: color, // Apply the color here
+                    tooltip: switch (loopMode) {
+                      LoopMode.off => 'Repeat Off',
+                      LoopMode.all => 'Repeat All',
+                      LoopMode.one => 'Repeat One',
+                    },
                   );
                 },
               ),
@@ -180,11 +188,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: _audioManager.next,
                 icon: const Icon(Icons.skip_next),
               ),
-              IconButton(
-                onPressed: () {
-                  // TODO: Implement more menu
+              ValueListenableBuilder<MediaItem?>(
+                valueListenable: _audioManager.currentSongNotifier,
+                builder: (context, mediaItem, _) {
+                  final isEnabled = mediaItem != null;
+
+                  return PopupMenuButton<String>(
+                    enabled: isEnabled,
+                    icon: const Icon(Icons.more_vert), // or Icons.more_horiz
+                    onSelected: (value) {
+                      if (!isEnabled) return;
+
+                      // Find the full Song object using the ID from the player
+                      try {
+                        final song = _homeManager.songs.value.firstWhere(
+                          (s) => s.id == mediaItem.id,
+                        );
+
+                        if (value == 'download') {
+                          _handleDownload(context, song);
+                        } else if (value == 'share') {
+                          _homeManager.shareSong(song);
+                        }
+                      } catch (e) {
+                        print('Song not found in list: $e');
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'download',
+                            child: ListTile(
+                              leading: Icon(Icons.download),
+                              title: Text('Download'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'share',
+                            child: ListTile(
+                              leading: Icon(Icons.share),
+                              title: Text('Share'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                  );
                 },
-                icon: const Icon(Icons.more_horiz),
               ),
             ],
           ),
@@ -216,36 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   subtitle: Text(song.reference),
                   selected: isPlaying,
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
 
-                    onSelected: (value) {
-                      if (value == 'download') {
-                        _handleDownload(context, song);
-                      } else if (value == 'share') {
-                        _homeManager.shareSong(song);
-                      }
-                    },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                          const PopupMenuItem<String>(
-                            value: 'download',
-                            child: ListTile(
-                              leading: Icon(Icons.download),
-                              title: Text('Download'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'share',
-                            child: ListTile(
-                              leading: Icon(Icons.share),
-                              title: Text('Share'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                  ),
                   onTap: () {
                     _audioManager.seek(Duration.zero, index: index);
                     _audioManager.play();
