@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:scripturesongs/core/services/settings_service.dart';
+import 'package:scripturesongs/services/user_settings.dart';
 
 class AppState {
-  final SettingsService _settingsService;
+  final UserSettings _settingsService;
   late final ValueNotifier<ThemeMode> currentTheme;
 
   AppState(this._settingsService) {

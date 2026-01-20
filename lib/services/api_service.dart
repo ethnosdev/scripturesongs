@@ -1,4 +1,4 @@
-import '../../models/song_model.dart';
+import '../models/song.dart';
 
 class ApiService {
   Future<List<Song>> fetchSongs() async {
@@ -127,10 +127,6 @@ class ApiService {
         url: '${baseUrl}20-Greet-all-the-saints-in-Christ-Jesus.mp3',
       ),
     ];
-
-    await Future.delayed(
-      const Duration(milliseconds: 500),
-    ); // Simulate network delay
     return songs;
   }
 }

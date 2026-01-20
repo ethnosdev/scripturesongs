@@ -1,12 +1,12 @@
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:scripturesongs/core/service_locator.dart';
-import 'package:scripturesongs/core/services/audio_manager.dart';
+import 'package:scripturesongs/services/service_locator.dart';
+import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:scripturesongs/features/about/about_screen.dart';
-import 'package:scripturesongs/features/home/home_manager.dart';
-import 'package:scripturesongs/features/settings/settings_screen.dart';
-import 'package:scripturesongs/models/song_model.dart';
+import 'package:scripturesongs/ui/about/about_screen.dart';
+import 'package:scripturesongs/ui/home/home_manager.dart';
+import 'package:scripturesongs/ui/settings/settings_screen.dart';
+import 'package:scripturesongs/models/song.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,9 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // UPDATED: Increased flex to 4 to give player more room (40% of screen)
           _buildPlayer(),
-          // UPDATED: Decreased list flex to 6 (60% of screen)
           Expanded(flex: 6, child: _buildSongList()),
         ],
       ),
@@ -63,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPlayer() {
     return Container(
       height: 200,
-      // UPDATED: Reduced vertical padding slightly to prevent overflow on small screens
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,

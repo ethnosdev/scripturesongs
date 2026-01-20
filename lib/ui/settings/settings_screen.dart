@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:scripturesongs/core/app_state.dart';
-import 'package:scripturesongs/core/service_locator.dart';
+import 'package:scripturesongs/app_state.dart';
+import 'package:scripturesongs/services/service_locator.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -10,18 +10,13 @@ class SettingsScreen extends StatelessWidget {
     final appState = locator<AppState>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Theme',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('Theme', style: Theme.of(context).textTheme.headlineSmall),
             ValueListenableBuilder<ThemeMode>(
               valueListenable: appState.currentTheme,
               builder: (context, themeMode, _) {

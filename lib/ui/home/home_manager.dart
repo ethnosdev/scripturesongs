@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:scripturesongs/core/service_locator.dart';
-import 'package:scripturesongs/core/services/api_service.dart';
-import 'package:scripturesongs/core/services/audio_manager.dart';
-import 'package:scripturesongs/models/song_model.dart';
+import 'package:scripturesongs/services/service_locator.dart';
+import 'package:scripturesongs/services/api_service.dart';
+import 'package:scripturesongs/services/audio_manager.dart';
+import 'package:scripturesongs/models/song.dart';
 
 class HomeManager {
   final ApiService _apiService = locator<ApiService>();
@@ -11,12 +11,12 @@ class HomeManager {
   final ValueNotifier<List<Song>> songs = ValueNotifier<List<Song>>([]);
   final ValueNotifier<ProgressBarState> progressNotifier =
       ValueNotifier<ProgressBarState>(
-    ProgressBarState(
-      current: Duration.zero,
-      buffered: Duration.zero,
-      total: Duration.zero,
-    ),
-  );
+        ProgressBarState(
+          current: Duration.zero,
+          buffered: Duration.zero,
+          total: Duration.zero,
+        ),
+      );
 
   HomeManager() {
     _audioManager.progressNotifier.addListener(() {

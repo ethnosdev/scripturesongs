@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:scripturesongs/core/app_state.dart';
-import 'package:scripturesongs/core/service_locator.dart';
-import 'package:scripturesongs/features/home/home_screen.dart';
+import 'package:scripturesongs/app_state.dart';
+import 'package:scripturesongs/services/service_locator.dart';
+import 'package:scripturesongs/ui/home/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
