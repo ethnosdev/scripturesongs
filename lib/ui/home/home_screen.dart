@@ -31,36 +31,64 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scripture Songs'),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'settings') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsScreen(),
-                  ),
-                );
-              } else if (value == 'about') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const AboutScreen()),
-                );
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: Text('Settings'),
-              ),
-              const PopupMenuItem<String>(value: 'about', child: Text('About')),
-            ],
-          ),
-        ],
+        // Actions removed here. They are now in the Drawer.
       ),
+      drawer: _buildDrawer(),
       body: Column(
         children: [
           _buildPlayer(),
           Expanded(flex: 6, child: _buildSongList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Icon(Icons.music_note, size: 48, color: Colors.white),
+                const SizedBox(height: 10),
+                Text(
+                  'Scripture Songs',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings'),
+            onTap: () {
+              // Close the drawer before navigating
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('About'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const AboutScreen()),
+              );
+            },
+          ),
         ],
       ),
     );
