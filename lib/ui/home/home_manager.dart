@@ -59,19 +59,19 @@ class HomeManager {
 
     if (collection == 'favorites') {
       // Load favorites from local list
-      songList = List.from(_favorites); // Create a copy
+      songList = List.from(_favorites);
     } else {
       songList = await _apiService.fetchSongsForCollection(collection);
     }
 
+    // Stop current playback before switching
+    await _audioManager.stop();
+
     // Update the songs map
-    songs.value = {
-      ...songs.value, // Keep existing collections
-      collection: songList,
-    };
+    songs.value = {...songs.value, collection: songList};
 
     _audioManager.setQueue(songList);
-    _updateFavorites(); // Ensure favorites UI is up-to-date
+    _updateFavorites();
   }
 
   // Helper method to update the favorites notifier

@@ -33,6 +33,36 @@ class AudioManager {
 
   void setQueue(List<Song> songs) {
     _queue = songs;
+    if (songs.isNotEmpty) {
+      // Set the first song as active so the UI displays the title immediately
+      _currentIndex = 0;
+      final song = songs[0];
+      currentSongNotifier.value = MediaItem(
+        id: song.id,
+        title: song.title,
+        artist: song.reference,
+      );
+      isFirstSongNotifier.value = true;
+      isLastSongNotifier.value = songs.length <= 1;
+    } else {
+      _currentIndex = -1;
+      currentSongNotifier.value = null;
+      isFirstSongNotifier.value = true;
+      isLastSongNotifier.value = true;
+    }
+  }
+
+  Future<void> stop() async {
+    await _audioPlayer.stop();
+    // Reset state
+    currentSongNotifier.value = null;
+    _currentIndex = -1;
+    playButtonNotifier.value = ButtonState.paused;
+    progressNotifier.value = ProgressBarState(
+      current: Duration.zero,
+      buffered: Duration.zero,
+      total: Duration.zero,
+    );
   }
 
   // Called from UI when tapping a song or internally to start/skip
@@ -180,7 +210,6 @@ class AudioManager {
     });
   }
 
-  // Handle cases where player is idle (not loaded yet)
   void play() {
     if (_audioPlayer.processingState == ProcessingState.idle) {
       // No source loaded (startup or stopped). Load start or current index.
@@ -218,7 +247,6 @@ class AudioManager {
       LoopMode.all => LoopMode.off,
     };
     loopModeNotifier.value = next;
-    // We handle queue looping manually, but LoopMode.one is useful for the player
     _audioPlayer.setLoopMode(
       next == LoopMode.one ? LoopMode.one : LoopMode.off,
     );
