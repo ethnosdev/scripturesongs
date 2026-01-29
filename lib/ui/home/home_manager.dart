@@ -171,4 +171,37 @@ class HomeManager {
       ShareParams(text: '${song.title}\n${song.url}', subject: 'Song'),
     );
   }
+
+  /// Copies the already downloaded file to the public Downloads folder (Android)
+  /// or Documents (iOS) so the user can access it outside the app.
+  Future<String> exportSongToDownloads(Song song) async {
+    final docDir = await getApplicationDocumentsDirectory();
+    final sourceFile = await _getLocalFile(song, docDir);
+
+    if (!sourceFile.existsSync()) {
+      throw Exception('Song file not found. Please download the album first.');
+    }
+
+    Directory? exportDir;
+    if (Platform.isAndroid) {
+      exportDir = Directory('/storage/emulated/0/Download');
+      // Fallback if that specific path doesn't exist (rare)
+      if (!await exportDir.exists()) {
+        exportDir = await getExternalStorageDirectory();
+      }
+    } else {
+      exportDir = await getApplicationDocumentsDirectory();
+    }
+
+    if (exportDir == null) throw Exception('Could not determine export path');
+
+    // Create a clean filename
+    final cleanTitle = song.title.replaceAll(RegExp(r'[^\w\s\.-]'), '');
+    final destPath = '${exportDir.path}/$cleanTitle.mp3';
+
+    // Copy the file
+    await sourceFile.copy(destPath);
+
+    return 'Saved to ${Platform.isAndroid ? "Downloads" : "Files app"}';
+  }
 }

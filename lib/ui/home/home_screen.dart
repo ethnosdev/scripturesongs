@@ -19,6 +19,26 @@ class _HomeScreenState extends State<HomeScreen> {
   final _homeManager = locator<HomeManager>();
   final _audioManager = locator<AudioManager>();
 
+  Future<void> _handleManualDownload(Song song) async {
+    try {
+      final message = await _homeManager.exportSongToDownloads(song);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Save failed: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -190,15 +210,51 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.skip_next),
               ),
               // Shuffle
-              ValueListenableBuilder<bool>(
-                valueListenable: _audioManager.shuffleModeNotifier,
-                builder: (context, isShuffle, _) {
-                  return IconButton(
-                    icon: const Icon(Icons.shuffle),
-                    color: isShuffle
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey,
-                    onPressed: _audioManager.toggleShuffle,
+              // Menu (Export / Share / Favorite)
+              ValueListenableBuilder<MediaItem?>(
+                valueListenable: _audioManager.currentSongNotifier,
+                builder: (context, mediaItem, _) {
+                  final isEnabled = mediaItem != null;
+                  return PopupMenuButton<String>(
+                    enabled: isEnabled,
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (value) {
+                      if (!isEnabled) return;
+                      // Find the actual Song object from the ID
+                      try {
+                        final song = _homeManager
+                            .songs
+                            .value[_homeManager.currentCollection.value]!
+                            .firstWhere((s) => s.id == mediaItem.id);
+
+                        if (value == 'export') {
+                          _handleManualDownload(song);
+                        } else if (value == 'share') {
+                          _homeManager.shareSong(song);
+                        }
+                      } catch (e) {
+                        print('Song not found for menu action: $e');
+                      }
+                    },
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'export',
+                            child: ListTile(
+                              leading: Icon(Icons.download),
+                              title: Text('Save'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'share',
+                            child: ListTile(
+                              leading: Icon(Icons.share),
+                              title: Text('Share'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
                   );
                 },
               ),
