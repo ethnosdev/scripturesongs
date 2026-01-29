@@ -385,10 +385,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   return LinearProgressIndicator(value: value);
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               ValueListenableBuilder<String>(
                 valueListenable: _homeManager.downloadStatus,
                 builder: (context, status, _) {
+                  // Check if we can split "Downloading X/Y: Song Name"
+                  if (status.contains(': ')) {
+                    final splitIndex = status.indexOf(': ');
+                    final progressText = status.substring(0, splitIndex);
+                    final songName = status.substring(splitIndex + 2);
+
+                    return Column(
+                      children: [
+                        Text(
+                          progressText,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          songName,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    );
+                  }
+                  // Fallback if format is different
                   return Text(status, textAlign: TextAlign.center);
                 },
               ),
