@@ -136,9 +136,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 valueListenable: _audioManager.loopModeNotifier,
                 builder: (context, loopMode, child) {
                   final icon = switch (loopMode) {
-                    LoopMode.one => Icons.repeat_one, // Shows '1' inside arrows
-                    LoopMode.all => Icons.repeat, // Shows normal arrows
-                    LoopMode.off => Icons.repeat, // Shows normal arrows
+                    LoopMode.one => Icons.repeat_one,
+                    LoopMode.all => Icons.repeat,
+                    LoopMode.off => Icons.repeat,
                   };
                   final color = loopMode == LoopMode.off
                       ? Theme.of(context).disabledColor
@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return IconButton(
                     onPressed: _audioManager.cycleLoopMode,
                     icon: Icon(icon),
-                    color: color, // Apply the color here
+                    color: color,
                     tooltip: switch (loopMode) {
                       LoopMode.off => 'Repeat Off',
                       LoopMode.all => 'Repeat All',
@@ -184,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       return IconButton(
                         icon: const Icon(Icons.play_arrow),
                         onPressed: _audioManager.play,
-                        iconSize: 32, // Slightly larger play button
+                        iconSize: 32,
                       );
                     case ButtonState.playing:
                       return IconButton(
@@ -208,21 +208,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 valueListenable: _audioManager.currentSongNotifier,
                 builder: (context, mediaItem, _) {
                   final isEnabled = mediaItem != null;
-
                   return PopupMenuButton<String>(
                     enabled: isEnabled,
-                    icon: const Icon(Icons.more_vert), // or Icons.more_horiz
+                    icon: const Icon(Icons.more_vert),
                     onSelected: (value) {
                       if (!isEnabled) return;
-
-                      // Find the full Song object using the ID from the player
                       try {
                         final song = _homeManager.songs.value.firstWhere(
                           (s) => s.id == mediaItem.id,
                         );
-
                         if (value == 'download') {
-                          _handleDownload(context, song);
+                          _handleManualDownload(context, song);
                         } else if (value == 'share') {
                           _homeManager.shareSong(song);
                         }
@@ -236,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             value: 'download',
                             child: ListTile(
                               leading: Icon(Icons.download),
-                              title: Text('Download'),
+                              title: Text('Export to Downloads'),
                               contentPadding: EdgeInsets.zero,
                             ),
                           ),
@@ -282,11 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   subtitle: Text(song.reference),
                   selected: isPlaying,
-
-                  onTap: () {
-                    _audioManager.seek(Duration.zero, index: index);
-                    _audioManager.play();
-                  },
+                  onTap: () => _handleSongTap(index, song, songs),
                 );
               },
             );
@@ -296,13 +288,114 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _handleDownload(BuildContext context, Song song) async {
+  Future<void> _handleSongTap(int index, Song song, List<Song> allSongs) async {
+    // 1. Check if already downloaded
+    final isDownloaded = await _homeManager.isSongDownloaded(song);
+
+    if (isDownloaded) {
+      _audioManager.playSongAtIndex(index);
+      return;
+    }
+
+    // 2. Check if we have asked the user before
+    final hasAsked = await _homeManager.hasAskedCollection();
+
+    if (!hasAsked && mounted) {
+      // 3. Prompt user
+      final shouldDownloadAll = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Download Collection?'),
+          content: const Text(
+            'Would you like to download all songs in this collection for offline playback? '
+            'If not, only the current song will be downloaded.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Only This Song'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Download All'),
+            ),
+          ],
+        ),
+      );
+
+      await _homeManager.setAskedCollection(true);
+
+      if (shouldDownloadAll == true && mounted) {
+        _showBatchDownloadDialog(context, allSongs, index);
+        return;
+      }
+    }
+
+    // Fallback: Just play (AudioManager will handle the single download)
+    _audioManager.playSongAtIndex(index);
+  }
+
+  void _showBatchDownloadDialog(
+    BuildContext context,
+    List<Song> songs,
+    int startIndex,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false, // Prevent closing while downloading
+        child: AlertDialog(
+          title: const Text('Downloading Songs'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ValueListenableBuilder<double?>(
+                valueListenable: _homeManager.downloadProgress,
+                builder: (context, value, _) {
+                  return LinearProgressIndicator(value: value);
+                },
+              ),
+              const SizedBox(height: 10),
+              ValueListenableBuilder<String>(
+                valueListenable: _homeManager.downloadStatus,
+                builder: (context, status, _) {
+                  return Text(status, textAlign: TextAlign.center);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Start background download
+    _homeManager
+        .downloadAllSongs(songs)
+        .then((_) {
+          if (context.mounted) {
+            Navigator.pop(context); // Close dialog
+            _audioManager.playSongAtIndex(startIndex); // Start playing
+          }
+        })
+        .catchError((e) {
+          if (context.mounted) {
+            Navigator.pop(context); // Close dialog
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error downloading: $e')));
+          }
+        });
+  }
+
+  Future<void> _handleManualDownload(BuildContext context, Song song) async {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('Downloading "${song.title}"...')));
 
     try {
-      final message = await _homeManager.downloadSong(song);
+      final message = await _homeManager.downloadSongToPublic(song);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();

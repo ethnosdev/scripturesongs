@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class UserSettings {
   static const String _themeModeKey = 'theme_mode';
+  static const String _collectionAskedKey = 'collection_download_asked';
 
   Future<ThemeMode> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,5 +33,15 @@ class UserSettings {
         break;
     }
     await prefs.setString(_themeModeKey, themeModeString);
+  }
+
+  Future<bool> hasAskedToDownloadCollection() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_collectionAskedKey) ?? false;
+  }
+
+  Future<void> setAskedToDownloadCollection(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_collectionAskedKey, value);
   }
 }
