@@ -391,34 +391,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSongListView(List<Song> songList) {
-    return ListView.builder(
-      itemCount: songList.length,
-      itemBuilder: (context, index) {
-        final song = songList[index];
-        final isPlaying =
-            _audioManager.currentSongNotifier.value?.id == song.id;
-        return ListTile(
-          title: Text(
-            '${song.id}. ${song.title}',
-            style: TextStyle(
-              fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          subtitle: Text(song.reference),
-          selected: isPlaying,
-          trailing: _homeManager.currentCollection.value != 'favorites'
-              ? IconButton(
-                  icon: Icon(
-                    _homeManager.isFavorite(song)
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                  ),
-                  onPressed: () {
-                    _homeManager.toggleFavorite(song);
-                  },
-                )
-              : null,
-          onTap: () => _handleSongTap(index, song, songList),
+    // Listen to currentSongNotifier to update the list when the song changes
+    return ValueListenableBuilder<MediaItem?>(
+      valueListenable: _audioManager.currentSongNotifier,
+      builder: (context, currentMediaItem, _) {
+        return ListView.builder(
+          itemCount: songList.length,
+          itemBuilder: (context, index) {
+            final song = songList[index];
+            final isPlaying = currentMediaItem?.id == song.id;
+
+            return ListTile(
+              title: Text(
+                '${song.id}. ${song.title}',
+                style: TextStyle(
+                  fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+                  color: isPlaying
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+              ),
+              subtitle: Text(song.reference),
+              selected: isPlaying,
+              trailing: _homeManager.currentCollection.value != 'favorites'
+                  ? IconButton(
+                      icon: Icon(
+                        _homeManager.isFavorite(song)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                      ),
+                      onPressed: () {
+                        _homeManager.toggleFavorite(song);
+                      },
+                    )
+                  : null,
+              onTap: () => _handleSongTap(index, song, songList),
+            );
+          },
         );
       },
     );

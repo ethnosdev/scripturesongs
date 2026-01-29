@@ -29,14 +29,15 @@ class AudioManager {
     _listenForChangesInBufferedPosition();
     _listenForChangesInTotalDuration();
     _listenForChangesInLoopMode();
+    _listenForChangesInSequenceState(); // Restored this listener
   }
 
   void setQueue(List<Song> songs) {
     _queue = songs;
     if (songs.isNotEmpty) {
-      // Set the first song as active so the UI displays the title immediately
       _currentIndex = 0;
       final song = songs[0];
+      // Set initial state without loading the file yet
       currentSongNotifier.value = MediaItem(
         id: song.id,
         title: song.title,
@@ -54,7 +55,6 @@ class AudioManager {
 
   Future<void> stop() async {
     await _audioPlayer.stop();
-    // Reset state
     currentSongNotifier.value = null;
     _currentIndex = -1;
     playButtonNotifier.value = ButtonState.paused;
@@ -65,7 +65,6 @@ class AudioManager {
     );
   }
 
-  // Called from UI when tapping a song or internally to start/skip
   Future<void> playSongAtIndex(int index) async {
     if (index < 0 || index >= _queue.length) return;
     _currentIndex = index;
@@ -77,12 +76,13 @@ class AudioManager {
 
     final song = _queue[_currentIndex];
 
-    // Update Notifiers immediately so UI reflects the target song
     final mediaItem = MediaItem(
       id: song.id,
       title: song.title,
       artist: song.reference,
     );
+
+    // Optimistically update the UI immediately
     currentSongNotifier.value = mediaItem;
     isFirstSongNotifier.value = _currentIndex == 0;
     isLastSongNotifier.value = _currentIndex == _queue.length - 1;
@@ -94,16 +94,14 @@ class AudioManager {
       final path = await homeManager.getLocalPathIfAvailable(song);
 
       if (path != null) {
-        // File exists, play it
+        // File exists, load and play
         await _audioPlayer.setAudioSource(
           AudioSource.file(path, tag: mediaItem),
         );
         _audioPlayer.play();
       } else {
-        // File missing. Pause (loading state), download, then play.
+        // File missing. Pause, download, then play.
         playButtonNotifier.value = ButtonState.loading;
-
-        // Ensure the player doesn't try to play while we download
         _audioPlayer.pause();
 
         try {
@@ -118,14 +116,23 @@ class AudioManager {
           }
         } catch (e) {
           playButtonNotifier.value = ButtonState.paused;
-          debugPrint("Error downloading song for playback: $e");
-          // Revert play state if download fails
-          _audioPlayer.pause();
+          debugPrint("Error downloading song: $e");
         }
       }
     } catch (e) {
       debugPrint("Error loading audio source: $e");
     }
+  }
+
+  void _listenForChangesInSequenceState() {
+    _audioPlayer.sequenceStateStream.listen((sequenceState) {
+      final currentItem = sequenceState?.currentSource;
+      final tag = currentItem?.tag;
+      // Update the notifier if the player has a valid MediaItem loaded
+      if (tag is MediaItem) {
+        currentSongNotifier.value = tag;
+      }
+    });
   }
 
   void _listenForChangesInPlayerState() {
@@ -142,7 +149,6 @@ class AudioManager {
         playButtonNotifier.value = ButtonState.playing;
       }
 
-      // Handle Auto-Advance (The "Loop" logic)
       if (processingState == ProcessingState.completed) {
         _handleSongCompletion();
       }
@@ -153,18 +159,14 @@ class AudioManager {
     final loopMode = loopModeNotifier.value;
 
     if (loopMode == LoopMode.one) {
-      // Replay current
       _audioPlayer.seek(Duration.zero);
       _audioPlayer.play();
     } else {
-      // Determine next index
       if (_currentIndex < _queue.length - 1) {
         next();
       } else if (loopMode == LoopMode.all) {
-        // Loop back to start
         playSongAtIndex(0);
       } else {
-        // End of playlist, stop.
         _audioPlayer.stop();
         _audioPlayer.seek(Duration.zero);
       }
@@ -211,20 +213,18 @@ class AudioManager {
   }
 
   void play() {
+    // If the player is idle (not loaded), play the current/first song
     if (_audioPlayer.processingState == ProcessingState.idle) {
-      // No source loaded (startup or stopped). Load start or current index.
       final indexToPlay = _currentIndex < 0 ? 0 : _currentIndex;
       if (_queue.isNotEmpty && indexToPlay < _queue.length) {
         playSongAtIndex(indexToPlay);
       }
     } else {
-      // Normal resume
       _audioPlayer.play();
     }
   }
 
   void pause() => _audioPlayer.pause();
-
   void seek(Duration position) => _audioPlayer.seek(position);
 
   void previous() {
