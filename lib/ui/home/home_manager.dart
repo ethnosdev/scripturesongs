@@ -49,8 +49,25 @@ class HomeManager {
       progressNotifier.value = _audioManager.progressNotifier.value;
     });
 
+    _initFavorites();
+
     // Load initial collection
     loadSongs(currentCollection.value);
+  }
+
+  Future<void> _initFavorites() async {
+    final savedIds = await _userSettings.getFavoriteSongIds();
+    if (savedIds.isNotEmpty) {
+      // NOTE: Ensure your ApiService has the getSongsByIds method from the previous step
+      final savedSongs = await _apiService.getSongsByIds(savedIds);
+      _favorites.addAll(savedSongs);
+      _updateFavorites();
+    }
+  }
+
+  Future<void> _saveFavoritesToStorage() async {
+    final ids = _favorites.map((s) => s.id).toList();
+    await _userSettings.setFavoriteSongIds(ids);
   }
 
   // Load songs for a given collection
@@ -58,20 +75,19 @@ class HomeManager {
     List<Song> songList = [];
 
     if (collection == 'favorites') {
-      // Load favorites from local list
+      // Ensure we use the most up-to-date list
       songList = List.from(_favorites);
     } else {
       songList = await _apiService.fetchSongsForCollection(collection);
     }
 
-    // Stop current playback before switching
+    // Stop current playback before switching collections
     await _audioManager.stop();
 
     // Update the songs map
     songs.value = {...songs.value, collection: songList};
 
     _audioManager.setQueue(songList);
-    _updateFavorites();
   }
 
   // Helper method to update the favorites notifier
@@ -87,6 +103,7 @@ class HomeManager {
       _favorites.add(song);
     }
     _updateFavorites();
+    _saveFavoritesToStorage();
   }
 
   bool isFavorite(Song song) {

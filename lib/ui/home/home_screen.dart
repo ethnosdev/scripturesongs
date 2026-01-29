@@ -322,36 +322,33 @@ class _HomeScreenState extends State<HomeScreen> {
                               'favorites')
                             PopupMenuItem<String>(
                               value: 'favorite',
-                              child: ListTile(
-                                leading: Icon(
-                                  _homeManager.isFavorite(
-                                        _homeManager
-                                            .songs
-                                            .value[_homeManager
-                                                .currentCollection
-                                                .value]!
-                                            .firstWhere(
-                                              (s) => s.id == mediaItem!.id,
-                                            ),
-                                      )
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                ),
-                                title: Text(
-                                  _homeManager.isFavorite(
-                                        _homeManager
-                                            .songs
-                                            .value[_homeManager
-                                                .currentCollection
-                                                .value]!
-                                            .firstWhere(
-                                              (s) => s.id == mediaItem!.id,
-                                            ),
-                                      )
-                                      ? 'Remove from Favorites'
-                                      : 'Add to Favorites',
-                                ),
-                                contentPadding: EdgeInsets.zero,
+                              child: ValueListenableBuilder<List<Song>>(
+                                valueListenable: _homeManager.favoritesNotifier,
+                                builder: (context, favorites, _) {
+                                  final isFav = _homeManager.isFavorite(
+                                    _homeManager
+                                        .songs
+                                        .value[_homeManager
+                                            .currentCollection
+                                            .value]!
+                                        .firstWhere(
+                                          (s) => s.id == mediaItem!.id,
+                                        ),
+                                  );
+                                  return ListTile(
+                                    leading: Icon(
+                                      isFav
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                    ),
+                                    title: Text(
+                                      isFav
+                                          ? 'Remove from Favorites'
+                                          : 'Add to Favorites',
+                                    ),
+                                    contentPadding: EdgeInsets.zero,
+                                  );
+                                },
                               ),
                             ),
                         ],
@@ -414,17 +411,28 @@ class _HomeScreenState extends State<HomeScreen> {
               subtitle: Text(song.reference),
               selected: isPlaying,
               trailing: _homeManager.currentCollection.value != 'favorites'
-                  ? IconButton(
-                      icon: Icon(
-                        _homeManager.isFavorite(song)
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                      ),
+                  ? ValueListenableBuilder<List<Song>>(
+                      // Listen to the favorites list changes
+                      valueListenable: _homeManager.favoritesNotifier,
+                      builder: (context, favorites, _) {
+                        final isFav = _homeManager.isFavorite(song);
+                        return IconButton(
+                          icon: Icon(
+                            isFav ? Icons.favorite : Icons.favorite_border,
+                          ),
+                          onPressed: () {
+                            _homeManager.toggleFavorite(song);
+                          },
+                        );
+                      },
+                    )
+                  : IconButton(
+                      // Allow removing items when inside the Favorites screen
+                      icon: const Icon(Icons.remove_circle_outline),
                       onPressed: () {
                         _homeManager.toggleFavorite(song);
                       },
-                    )
-                  : null,
+                    ),
               onTap: () => _handleSongTap(index, song, songList),
             );
           },
@@ -575,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

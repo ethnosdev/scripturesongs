@@ -126,7 +126,7 @@ class AudioManager {
 
   void _listenForChangesInSequenceState() {
     _audioPlayer.sequenceStateStream.listen((sequenceState) {
-      final currentItem = sequenceState?.currentSource;
+      final currentItem = sequenceState.currentSource;
       final tag = currentItem?.tag;
       // Update the notifier if the player has a valid MediaItem loaded
       if (tag is MediaItem) {
