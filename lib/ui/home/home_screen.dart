@@ -23,16 +23,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _homeManager.loadSongs();
+    // No need to load songs here. HomeManager does it on init.
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scripture Songs'),
-        // Actions removed here. They are now in the Drawer.
-      ),
+      appBar: AppBar(title: const Text('Scripture Songs')),
       drawer: _buildDrawer(),
       body: Column(
         children: [
@@ -68,12 +65,40 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          // Albums Section
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'Albums',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          _buildDrawerItem(
+            title: 'Philippians',
+            icon: Icons.album,
+            collection: 'philippians',
+          ),
+          _buildDrawerItem(
+            title: 'Jude',
+            icon: Icons.album,
+            collection: 'jude',
+          ),
+          _buildDrawerItem(
+            title: 'Favorites',
+            icon: Icons.favorite,
+            collection: 'favorites',
+          ),
+          const Divider(),
+          // App Section
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('App', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Settings'),
             onTap: () {
-              // Close the drawer before navigating
-              Navigator.pop(context);
+              Navigator.pop(context); // Close drawer
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
@@ -83,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: const Icon(Icons.info_outline),
             title: const Text('About'),
             onTap: () {
-              Navigator.pop(context);
+              Navigator.pop(context); // Close drawer
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => const AboutScreen()),
               );
@@ -91,6 +116,24 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required String title,
+    required IconData icon,
+    required String collection,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      onTap: () {
+        _homeManager.currentCollection.value = collection;
+        _homeManager.loadSongs(
+          collection,
+        ); // Load the songs for this collection
+        Navigator.pop(context); // Close the drawer
+      },
     );
   }
 
@@ -116,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 ValueListenableBuilder(
                   valueListenable: _audioManager.currentSongNotifier,
-                  builder: (_, song, _) {
+                  builder: (_, song, __) {
                     return Text(
                       song?.title ?? '',
                       style: Theme.of(context).textTheme.headlineSmall,
@@ -242,13 +285,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     onSelected: (value) {
                       if (!isEnabled) return;
                       try {
-                        final song = _homeManager.songs.value.firstWhere(
-                          (s) => s.id == mediaItem.id,
-                        );
+                        final song = _homeManager
+                            .songs
+                            .value[_homeManager.currentCollection.value]!
+                            .firstWhere((s) => s.id == mediaItem.id);
                         if (value == 'download') {
                           _handleManualDownload(context, song);
                         } else if (value == 'share') {
                           _homeManager.shareSong(song);
+                        } else if (value == 'favorite') {
+                          _homeManager.toggleFavorite(song);
                         }
                       } catch (e) {
                         print('Song not found in list: $e');
@@ -272,6 +318,42 @@ class _HomeScreenState extends State<HomeScreen> {
                               contentPadding: EdgeInsets.zero,
                             ),
                           ),
+                          if (_homeManager.currentCollection.value !=
+                              'favorites')
+                            PopupMenuItem<String>(
+                              value: 'favorite',
+                              child: ListTile(
+                                leading: Icon(
+                                  _homeManager.isFavorite(
+                                        _homeManager
+                                            .songs
+                                            .value[_homeManager
+                                                .currentCollection
+                                                .value]!
+                                            .firstWhere(
+                                              (s) => s.id == mediaItem!.id,
+                                            ),
+                                      )
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                ),
+                                title: Text(
+                                  _homeManager.isFavorite(
+                                        _homeManager
+                                            .songs
+                                            .value[_homeManager
+                                                .currentCollection
+                                                .value]!
+                                            .firstWhere(
+                                              (s) => s.id == mediaItem!.id,
+                                            ),
+                                      )
+                                      ? 'Remove from Favorites'
+                                      : 'Add to Favorites',
+                                ),
+                                contentPadding: EdgeInsets.zero,
+                              ),
+                            ),
                         ],
                   );
                 },
@@ -284,33 +366,59 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSongList() {
-    return ValueListenableBuilder<List<Song>>(
-      valueListenable: _homeManager.songs,
-      builder: (context, songs, _) {
-        return ValueListenableBuilder<MediaItem?>(
-          valueListenable: _audioManager.currentSongNotifier,
-          builder: (context, currentMediaItem, _) {
-            return ListView.builder(
-              itemCount: songs.length,
-              itemBuilder: (context, index) {
-                final song = songs[index];
-                final isPlaying = currentMediaItem?.id == song.id;
-                return ListTile(
-                  title: Text(
-                    '${song.id}. ${song.title}',
-                    style: TextStyle(
-                      fontWeight: isPlaying
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                  subtitle: Text(song.reference),
-                  selected: isPlaying,
-                  onTap: () => _handleSongTap(index, song, songs),
-                );
-              },
-            );
+    return ValueListenableBuilder<String>(
+      valueListenable: _homeManager.currentCollection,
+      builder: (context, collection, _) {
+        return ValueListenableBuilder<Map<String, List<Song>>>(
+          valueListenable: _homeManager.songs,
+          builder: (context, songsMap, _) {
+            final songList = songsMap[collection] ?? [];
+
+            // Handle favorites list separately
+            if (collection == 'favorites') {
+              return ValueListenableBuilder<List<Song>>(
+                valueListenable: _homeManager.favoritesNotifier,
+                builder: (context, favorites, _) {
+                  return _buildSongListView(favorites);
+                },
+              );
+            }
+            return _buildSongListView(songList);
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildSongListView(List<Song> songList) {
+    return ListView.builder(
+      itemCount: songList.length,
+      itemBuilder: (context, index) {
+        final song = songList[index];
+        final isPlaying =
+            _audioManager.currentSongNotifier.value?.id == song.id;
+        return ListTile(
+          title: Text(
+            '${song.id}. ${song.title}',
+            style: TextStyle(
+              fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          subtitle: Text(song.reference),
+          selected: isPlaying,
+          trailing: _homeManager.currentCollection.value != 'favorites'
+              ? IconButton(
+                  icon: Icon(
+                    _homeManager.isFavorite(song)
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                  ),
+                  onPressed: () {
+                    _homeManager.toggleFavorite(song);
+                  },
+                )
+              : null,
+          onTap: () => _handleSongTap(index, song, songList),
         );
       },
     );
@@ -319,14 +427,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _handleSongTap(int index, Song song, List<Song> allSongs) async {
     // 1. Check if already downloaded
     final isDownloaded = await _homeManager.isSongDownloaded(song);
-
     if (isDownloaded) {
       _audioManager.playSongAtIndex(index);
       return;
     }
 
     // 2. Check if we have asked the user before
-    final hasAsked = await _homeManager.hasAskedCollection();
+    final hasAsked = await _homeManager.hasAskedCollection(song.collection);
 
     if (!hasAsked && mounted) {
       // 3. Prompt user
@@ -352,14 +459,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      await _homeManager.setAskedCollection(true);
-
       if (shouldDownloadAll == true && mounted) {
         _showBatchDownloadDialog(context, allSongs, index);
+        await _homeManager.setAskedCollection(song.collection, true);
         return;
       }
+      await _homeManager.setAskedCollection(song.collection, false);
     }
-
     // Fallback: Just play (AudioManager will handle the single download)
     _audioManager.playSongAtIndex(index);
   }

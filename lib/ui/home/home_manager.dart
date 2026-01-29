@@ -16,7 +16,15 @@ class HomeManager {
   final AudioManager _audioManager = locator<AudioManager>();
   final UserSettings _userSettings = locator<UserSettings>();
 
-  final ValueNotifier<List<Song>> songs = ValueNotifier<List<Song>>([]);
+  // Use a map to hold songs per collection
+  final ValueNotifier<Map<String, List<Song>>> songs =
+      ValueNotifier<Map<String, List<Song>>>({});
+
+  // Current collection being viewed
+  final ValueNotifier<String> currentCollection = ValueNotifier<String>(
+    'philippians',
+  );
+
   final ValueNotifier<ProgressBarState> progressNotifier =
       ValueNotifier<ProgressBarState>(
         ProgressBarState(
@@ -30,18 +38,59 @@ class HomeManager {
   final ValueNotifier<double?> downloadProgress = ValueNotifier(null);
   final ValueNotifier<String> downloadStatus = ValueNotifier('');
 
+  // Favorites (in-memory for now)
+  final List<Song> _favorites = []; // Local list
+  final ValueNotifier<List<Song>> favoritesNotifier = ValueNotifier<List<Song>>(
+    [],
+  );
+
   HomeManager() {
     _audioManager.progressNotifier.addListener(() {
       progressNotifier.value = _audioManager.progressNotifier.value;
     });
+
+    // Load initial collection
+    loadSongs(currentCollection.value);
   }
 
-  Future<void> loadSongs() async {
-    final songList = await _apiService.fetchSongs();
-    songs.value = songList;
-    // We pass the list to AudioManager so it knows the queue,
-    // but we don't init the player with audio sources yet.
+  // Load songs for a given collection
+  Future<void> loadSongs(String collection) async {
+    List<Song> songList = [];
+
+    if (collection == 'favorites') {
+      // Load favorites from local list
+      songList = List.from(_favorites); // Create a copy
+    } else {
+      songList = await _apiService.fetchSongsForCollection(collection);
+    }
+
+    // Update the songs map
+    songs.value = {
+      ...songs.value, // Keep existing collections
+      collection: songList,
+    };
+
     _audioManager.setQueue(songList);
+    _updateFavorites(); // Ensure favorites UI is up-to-date
+  }
+
+  // Helper method to update the favorites notifier
+  void _updateFavorites() {
+    favoritesNotifier.value = List.from(_favorites);
+  }
+
+  // Add/Remove from favorites (simple toggle)
+  void toggleFavorite(Song song) {
+    if (_favorites.contains(song)) {
+      _favorites.remove(song);
+    } else {
+      _favorites.add(song);
+    }
+    _updateFavorites();
+  }
+
+  bool isFavorite(Song song) {
+    return _favorites.contains(song);
   }
 
   Future<bool> _requestPermission() async {
@@ -133,29 +182,26 @@ class HomeManager {
   Future<void> downloadAllSongs(List<Song> songList) async {
     int total = songList.length;
     downloadProgress.value = 0.0;
-
     for (int i = 0; i < total; i++) {
       final song = songList[i];
       downloadStatus.value = 'Downloading ${i + 1}/$total: ${song.title}';
 
-      // Don't re-download if we have it
       if (!await isSongDownloaded(song)) {
         await downloadSongForPlayback(song);
       }
 
       downloadProgress.value = (i + 1) / total;
     }
-
     downloadProgress.value = null; // Done
     downloadStatus.value = '';
   }
 
-  Future<bool> hasAskedCollection() {
-    return _userSettings.hasAskedToDownloadCollection();
+  Future<bool> hasAskedCollection(String collection) {
+    return _userSettings.hasAskedToDownloadCollection(collection);
   }
 
-  Future<void> setAskedCollection(bool value) {
-    return _userSettings.setAskedToDownloadCollection(value);
+  Future<void> setAskedCollection(String collection, bool value) {
+    return _userSettings.setAskedToDownloadCollection(collection, value);
   }
 
   Future<void> shareSong(Song song) async {
