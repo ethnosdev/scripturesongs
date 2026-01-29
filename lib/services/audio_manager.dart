@@ -35,7 +35,7 @@ class AudioManager {
     _queue = songs;
   }
 
-  // Called from UI when tapping a song
+  // Called from UI when tapping a song or internally to start/skip
   Future<void> playSongAtIndex(int index) async {
     if (index < 0 || index >= _queue.length) return;
     _currentIndex = index;
@@ -73,13 +73,14 @@ class AudioManager {
         // File missing. Pause (loading state), download, then play.
         playButtonNotifier.value = ButtonState.loading;
 
-        // Ensure we are in a clean state
+        // Ensure the player doesn't try to play while we download
         _audioPlayer.pause();
 
         try {
           final newPath = await homeManager.downloadSongForPlayback(song);
+
+          // Ensure user hasn't skipped away while downloading
           if (_currentIndex == _queue.indexOf(song)) {
-            // Ensure user hasn't skipped away
             await _audioPlayer.setAudioSource(
               AudioSource.file(newPath, tag: mediaItem),
             );
@@ -88,7 +89,8 @@ class AudioManager {
         } catch (e) {
           playButtonNotifier.value = ButtonState.paused;
           debugPrint("Error downloading song for playback: $e");
-          // Optionally trigger play next or stop
+          // Revert play state if download fails
+          _audioPlayer.pause();
         }
       }
     } catch (e) {
@@ -178,7 +180,20 @@ class AudioManager {
     });
   }
 
-  void play() => _audioPlayer.play();
+  // Handle cases where player is idle (not loaded yet)
+  void play() {
+    if (_audioPlayer.processingState == ProcessingState.idle) {
+      // No source loaded (startup or stopped). Load start or current index.
+      final indexToPlay = _currentIndex < 0 ? 0 : _currentIndex;
+      if (_queue.isNotEmpty && indexToPlay < _queue.length) {
+        playSongAtIndex(indexToPlay);
+      }
+    } else {
+      // Normal resume
+      _audioPlayer.play();
+    }
+  }
+
   void pause() => _audioPlayer.pause();
 
   void seek(Duration position) => _audioPlayer.seek(position);
@@ -203,10 +218,7 @@ class AudioManager {
       LoopMode.all => LoopMode.off,
     };
     loopModeNotifier.value = next;
-    // We don't set it on the player because we handle looping manually logic above
-    // except for LoopMode.one which we can let the player handle or handle manually.
-    // However, since we reload files, manual handling is safer for the queue,
-    // but player.setLoopMode(LoopMode.one) works fine for a single file.
+    // We handle queue looping manually, but LoopMode.one is useful for the player
     _audioPlayer.setLoopMode(
       next == LoopMode.one ? LoopMode.one : LoopMode.off,
     );
