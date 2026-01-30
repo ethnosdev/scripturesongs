@@ -96,9 +96,10 @@ class HomeManager {
 
         final file = await _getLocalFile(song, docDir);
         if (!file.existsSync()) {
-          final response = await get(Uri.parse(song.url));
+          final request = Request('GET', Uri.parse(song.url));
+          final response = await Client().send(request);
           if (response.statusCode == 200) {
-            await file.writeAsBytes(response.bodyBytes);
+            await response.stream.pipe(file.openWrite());
           } else {
             throw Exception('Failed to download ${song.title}');
           }
