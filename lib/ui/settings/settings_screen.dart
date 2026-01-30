@@ -7,7 +7,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = locator<AppState>();
+    final appState = getIt<AppState>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),

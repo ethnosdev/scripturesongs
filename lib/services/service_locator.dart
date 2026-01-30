@@ -5,14 +5,12 @@ import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:scripturesongs/services/user_settings.dart';
 import 'package:scripturesongs/ui/home/home_manager.dart';
 
-final GetIt locator = GetIt.instance;
+final GetIt getIt = GetIt.instance;
 
 void setupLocator() {
-  locator.registerLazySingleton<ApiService>(() => ApiService());
-  locator.registerLazySingleton<UserSettings>(() => UserSettings());
-  locator.registerLazySingleton<AppState>(
-    () => AppState(locator<UserSettings>()),
-  );
-  locator.registerLazySingleton<AudioManager>(() => AudioManager());
-  locator.registerFactory<HomeManager>(() => HomeManager());
+  getIt.registerLazySingleton<ApiService>(() => ApiService());
+  getIt.registerLazySingleton<UserSettings>(() => UserSettings());
+  getIt.registerLazySingleton<AppState>(() => AppState(getIt<UserSettings>()));
+  getIt.registerLazySingleton<AudioManager>(() => AudioManager());
+  getIt.registerFactory<HomeManager>(() => HomeManager());
 }

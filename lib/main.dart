@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:scripturesongs/app_state.dart';
 import 'package:scripturesongs/services/service_locator.dart';
+import 'package:scripturesongs/services/user_settings.dart';
 import 'package:scripturesongs/ui/home/home_screen.dart';
 
 Future<void> main() async {
@@ -20,7 +21,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = locator<AppState>();
+    final appState = getIt<AppState>();
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: appState.currentTheme,
       builder: (context, themeMode, child) {

@@ -12,9 +12,9 @@ import 'package:share_plus/share_plus.dart';
 enum CollectionStatus { loading, downloaded, notDownloaded, downloading }
 
 class HomeManager {
-  final ApiService _apiService = locator<ApiService>();
-  final AudioManager _audioManager = locator<AudioManager>();
-  final UserSettings _userSettings = locator<UserSettings>();
+  final ApiService _apiService = getIt<ApiService>();
+  final AudioManager _audioManager = getIt<AudioManager>();
+  final UserSettings _userSettings = getIt<UserSettings>();
 
   // Data
   final ValueNotifier<Map<String, List<Song>>> songs = ValueNotifier({});

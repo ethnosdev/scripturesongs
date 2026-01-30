@@ -16,8 +16,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _homeManager = locator<HomeManager>();
-  final _audioManager = locator<AudioManager>();
+  final _homeManager = getIt<HomeManager>();
+  final _audioManager = getIt<AudioManager>();
 
   @override
   Widget build(BuildContext context) {
