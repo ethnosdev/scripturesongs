@@ -18,6 +18,46 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _homeManager = getIt<HomeManager>();
   final _audioManager = getIt<AudioManager>();
+  final ScrollController _scrollController = ScrollController();
+  final double _itemHeight = 72.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioManager.currentSongNotifier.addListener(_scrollToCurrentSong);
+  }
+
+  @override
+  void dispose() {
+    _audioManager.currentSongNotifier.removeListener(_scrollToCurrentSong);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrentSong() {
+    final mediaItem = _audioManager.currentSongNotifier.value;
+    if (mediaItem == null) return;
+
+    // Get current song list
+    final currentCollectionId = _homeManager.currentCollection.value;
+    final currentList = _homeManager.songs.value[currentCollectionId] ?? [];
+
+    if (currentList.isEmpty) return;
+
+    // Find index
+    final index = currentList.indexWhere((s) => s.id == mediaItem.id);
+
+    if (index != -1 && _scrollController.hasClients) {
+      // 3. Simple Math: Index * Height = Position
+      final double position = index * _itemHeight;
+
+      _scrollController.animateTo(
+        position,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,8 +213,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ValueListenableBuilder<ButtonState>(
                 valueListenable: _audioManager.playButtonNotifier,
                 builder: (_, state, __) {
-                  if (state == ButtonState.loading)
+                  if (state == ButtonState.loading) {
                     return const CircularProgressIndicator();
+                  }
                   final isPlaying = state == ButtonState.playing;
                   return IconButton(
                     icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
@@ -255,14 +296,19 @@ class _HomeScreenState extends State<HomeScreen> {
       valueListenable: _audioManager.currentSongNotifier,
       builder: (context, currentMediaItem, _) {
         return ListView.builder(
+          controller: _scrollController,
           itemCount: songList.length,
+          itemExtent: _itemHeight,
           itemBuilder: (context, index) {
             final song = songList[index];
             final isPlaying = currentMediaItem?.id == song.id;
 
             return ListTile(
+              dense: false,
               title: Text(
                 '${index + 1}. ${song.title}', // Simplified index display
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
                   color: isPlaying
@@ -270,7 +316,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       : null,
                 ),
               ),
-              subtitle: Text(song.reference),
+              subtitle: Text(
+                song.reference,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               selected: isPlaying,
               trailing: _homeManager.currentCollection.value != 'favorites'
                   ? ValueListenableBuilder<List<Song>>(
