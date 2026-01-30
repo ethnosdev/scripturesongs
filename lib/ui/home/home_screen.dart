@@ -338,13 +338,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer() {
-    // Keep your existing drawer code,
-    // but ensure tapping an item calls _homeManager.loadCollection(id)
     return Drawer(
+      width: 200,
       child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
-            child: Center(child: Icon(Icons.music_note, size: 50)),
+          Image.asset(
+            'assets/logo.jpg',
+            height: 200,
+            width: 200,
+            fit: BoxFit.cover,
           ),
           ListTile(
             title: const Text('Philippians'),
