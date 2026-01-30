@@ -150,20 +150,6 @@ class ApiService {
       ),
 
       // Jude (Placeholders)
-      Song(
-        id: '21',
-        title: 'Jude 1-2',
-        reference: 'Jude 1-2',
-        url: '${_baseUrl}01-Grace-and-peace-to-you.mp3',
-        collection: 'jude',
-      ),
-      Song(
-        id: '22',
-        title: 'Jude 3-4',
-        reference: 'Jude 3-4',
-        url: '${_baseUrl}02-In-every-prayer.mp3',
-        collection: 'jude',
-      ),
     ];
   }
 

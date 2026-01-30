@@ -327,13 +327,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           ListTile(
-            title: const Text('Jude'),
-            onTap: () {
-              Navigator.pop(context);
-              _homeManager.loadCollection('jude');
-            },
-          ),
-          ListTile(
             title: const Text('Favorites'),
             onTap: () {
               Navigator.pop(context);
