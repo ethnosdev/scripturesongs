@@ -166,43 +166,30 @@ class HomeManager {
 
   bool isFavorite(Song song) => _favorites.contains(song);
 
-  // Single share (Optional)
-  void shareSong(Song song) {
-    SharePlus.instance.share(
-      ShareParams(text: '${song.title}\n${song.url}', subject: 'Song'),
-    );
-  }
-
-  /// Copies the already downloaded file to the public Downloads folder (Android)
-  /// or Documents (iOS) so the user can access it outside the app.
-  Future<String> exportSongToDownloads(Song song) async {
+  // Single share
+  Future<void> shareSong(Song song) async {
+    // 1. Get the local cached file
     final docDir = await getApplicationDocumentsDirectory();
-    final sourceFile = await _getLocalFile(song, docDir);
+    final file = await _getLocalFile(song, docDir);
 
-    if (!sourceFile.existsSync()) {
-      throw Exception('Song file not found. Please download the album first.');
-    }
+    // 2. Check if the file actually exists (is downloaded)
+    if (file.existsSync()) {
+      // 3. Share the FILE (Binary data)
+      // On iOS: User sees "Save to Files", "Messages", "AirDrop", etc.
+      // On Android: User sees "Bluetooth", "Drive", "WhatsApp", etc.
+      final params = ShareParams(
+        text: '${song.title} (${song.reference})',
+        files: [XFile(file.path, mimeType: 'audio/mpeg')],
+      );
 
-    Directory? exportDir;
-    if (Platform.isAndroid) {
-      exportDir = Directory('/storage/emulated/0/Download');
-      // Fallback if that specific path doesn't exist (rare)
-      if (!await exportDir.exists()) {
-        exportDir = await getExternalStorageDirectory();
-      }
+      await SharePlus.instance.share(params);
     } else {
-      exportDir = await getApplicationDocumentsDirectory();
+      // 4. Fallback: If not downloaded, just share the LINK
+      final params = ShareParams(
+        uri: Uri.tryParse(song.url),
+        text: '${song.title} (${song.reference})',
+      );
+      await SharePlus.instance.share(params);
     }
-
-    if (exportDir == null) throw Exception('Could not determine export path');
-
-    // Create a clean filename
-    final cleanTitle = song.title.replaceAll(RegExp(r'[^\w\s\.-]'), '');
-    final destPath = '${exportDir.path}/$cleanTitle.mp3';
-
-    // Copy the file
-    await sourceFile.copy(destPath);
-
-    return 'Saved to ${Platform.isAndroid ? "Downloads" : "Files app"}';
   }
 }
