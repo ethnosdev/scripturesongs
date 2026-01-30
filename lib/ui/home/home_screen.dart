@@ -48,14 +48,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final index = currentList.indexWhere((s) => s.id == mediaItem.id);
 
     if (index != -1 && _scrollController.hasClients) {
-      // 3. Simple Math: Index * Height = Position
       final double position = index * _itemHeight;
 
-      _scrollController.animateTo(
-        position,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      // FIX: Wrap in addPostFrameCallback to ensure Layout is complete
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Check hasClients again in case the widget was disposed while waiting
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            position,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
     }
   }
 
