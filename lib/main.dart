@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:scripturesongs/app_state.dart';
 import 'package:scripturesongs/services/service_locator.dart';
+import 'package:scripturesongs/services/user_settings.dart';
 import 'package:scripturesongs/ui/home/home_screen.dart';
+import 'package:scripturesongs/ui/onboarding/onboarding_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,12 +13,18 @@ Future<void> main() async {
     androidNotificationChannelName: 'Audio playback',
     androidNotificationOngoing: true,
   );
+
   setupLocator();
-  runApp(const MyApp());
+
+  final userSettings = getIt<UserSettings>();
+  final hasSeenOnboarding = await userSettings.getHasSeenOnboarding();
+
+  runApp(MyApp(showOnboarding: !hasSeenOnboarding));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool showOnboarding;
+  const MyApp({super.key, required this.showOnboarding});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +40,7 @@ class MyApp extends StatelessWidget {
           ),
           darkTheme: ThemeData.dark(),
           themeMode: themeMode,
-          home: const HomeScreen(),
+          home: showOnboarding ? const OnboardingScreen() : const HomeScreen(),
         );
       },
     );
