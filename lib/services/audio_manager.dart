@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:scripturesongs/models/song.dart';
+import 'package:scripturesongs/models/catalog_models.dart'; // UPDATED: Using new models
 
 class AudioManager {
   final _audioPlayer = AudioPlayer();
@@ -34,21 +34,24 @@ class AudioManager {
     _listenForLoopMode();
   }
 
-  /// Loads the entire album into the player as a playlist
-  Future<void> setPlaylist(List<Song> songs, List<String> filePaths) async {
-    if (songs.length != filePaths.length) return;
+  /// Loads the downloaded tracks into the player as a playlist
+  Future<void> setPlaylist(List<Track> tracks, List<String> filePaths) async {
+    if (tracks.length != filePaths.length) return;
 
-    // 1. Create the list of AudioSources (files with metadata)
-    final List<AudioSource> audioSources = List.generate(songs.length, (index) {
-      final song = songs[index];
+    final List<AudioSource> audioSources = List.generate(tracks.length, (
+      index,
+    ) {
+      final track = tracks[index];
       return AudioSource.file(
         filePaths[index],
-        tag: MediaItem(id: song.id, title: song.title, artist: song.reference),
+        tag: MediaItem(
+          id: track.id,
+          title: track.title,
+          artist: track.reference,
+        ),
       );
     });
 
-    // 2. Load the list directly into the player
-    // Note: Assuming your version supports setAudioSources(List<AudioSource>)
     await _audioPlayer.setAudioSources(
       audioSources,
       initialIndex: 0,
@@ -56,14 +59,29 @@ class AudioManager {
     );
   }
 
+  /// NEW: Finds the playlist index of a specific track ID
+  int getIndexForTrackId(String trackId) {
+    final sequence = _audioPlayer.sequence;
+    if (sequence == null) return -1;
+
+    for (int i = 0; i < sequence.length; i++) {
+      final tag = sequence[i].tag;
+      if (tag is MediaItem && tag.id == trackId) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   void _listenForSequenceState() {
     _audioPlayer.sequenceStateStream.listen((sequenceState) {
+      if (sequenceState == null) return;
+
       final currentItem = sequenceState.currentSource;
       if (currentItem?.tag is MediaItem) {
         currentSongNotifier.value = currentItem!.tag as MediaItem;
       }
 
-      // Update First/Last notifiers based on playlist position
       final currentIndex = sequenceState.currentIndex;
       isFirstSongNotifier.value = currentIndex == 0;
       isLastSongNotifier.value =
@@ -93,10 +111,9 @@ class AudioManager {
   void play() => _audioPlayer.play();
   void pause() => _audioPlayer.pause();
   void seek(Duration position) => _audioPlayer.seek(position);
-  void previous() => _audioPlayer.seekToPrevious(); // Native playlist prev
-  void next() => _audioPlayer.seekToNext(); // Native playlist next
+  void previous() => _audioPlayer.seekToPrevious();
+  void next() => _audioPlayer.seekToNext();
 
-  // Jump to specific song in playlist
   void seekToStats(int index) => _audioPlayer.seek(Duration.zero, index: index);
 
   void stop() async {
@@ -126,7 +143,6 @@ class AudioManager {
     });
   }
 
-  // Boilerplate position listeners
   void _listenForPosition() {
     _audioPlayer.positionStream.listen((position) {
       final old = progressNotifier.value;
@@ -163,7 +179,6 @@ class AudioManager {
   void dispose() => _audioPlayer.dispose();
 }
 
-// Keep existing Enum/Classes
 enum ButtonState { paused, playing, loading }
 
 class ProgressBarState {

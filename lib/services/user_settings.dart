@@ -6,6 +6,7 @@ class UserSettings {
   static const String _collectionAskedPrefix = 'collection_download_asked_';
   static const String _favoritesKey = 'favorite_song_ids';
   static const String _onboardingKey = 'has_seen_onboarding';
+  static const String _preferredVersionPrefix = 'pref_version_';
 
   // --- Theme ---
   Future<ThemeMode> getThemeMode() async {
@@ -74,5 +75,16 @@ class UserSettings {
   Future<void> setHasSeenOnboarding(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardingKey, value);
+  }
+
+  // --- Versions ---
+  Future<String?> getPreferredVersion(String trackId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_preferredVersionPrefix$trackId');
+  }
+
+  Future<void> setPreferredVersion(String trackId, String versionId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('$_preferredVersionPrefix$trackId', versionId);
   }
 }

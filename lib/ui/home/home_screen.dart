@@ -1,13 +1,14 @@
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:scripturesongs/models/catalog_models.dart';
+import 'package:scripturesongs/services/api_service.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:scripturesongs/ui/about/about_screen.dart';
 import 'package:scripturesongs/ui/home/home_manager.dart';
 import 'package:scripturesongs/ui/settings/settings_screen.dart';
-import 'package:scripturesongs/models/song.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,21 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final mediaItem = _audioManager.currentSongNotifier.value;
     if (mediaItem == null) return;
 
-    // Get current song list
-    final currentCollectionId = _homeManager.currentCollection.value;
-    final currentList = _homeManager.songs.value[currentCollectionId] ?? [];
-
+    final currentList = _homeManager.currentTracks.value;
     if (currentList.isEmpty) return;
 
-    // Find index
-    final index = currentList.indexWhere((s) => s.id == mediaItem.id);
+    final index = currentList.indexWhere((t) => t.id == mediaItem.id);
 
     if (index != -1 && _scrollController.hasClients) {
       final double position = index * _itemHeight;
-
-      // FIX: Wrap in addPostFrameCallback to ensure Layout is complete
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Check hasClients again in case the widget was disposed while waiting
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             position,
@@ -67,79 +61,35 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Scripture Songs')),
+      appBar: AppBar(
+        title: ValueListenableBuilder<String>(
+          valueListenable: _homeManager.collectionTitle,
+          builder: (context, title, _) => Text(title),
+        ),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'download_all') _homeManager.downloadAll();
+              if (value == 'delete_all') _homeManager.deleteAll();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'download_all',
+                child: Text('Download All'),
+              ),
+              const PopupMenuItem(
+                value: 'delete_all',
+                child: Text('Delete All Downloads'),
+              ),
+            ],
+          ),
+        ],
+      ),
       drawer: _buildDrawer(),
       body: Column(
         children: [
-          _buildTopArea(), // Dynamic: Player OR Download Button
-          Expanded(child: _buildSongList()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopArea() {
-    return ValueListenableBuilder<CollectionStatus>(
-      valueListenable: _homeManager.collectionStatus,
-      builder: (context, status, child) {
-        if (status == CollectionStatus.downloading) {
-          return _buildDownloadingState();
-        } else if (status == CollectionStatus.notDownloaded) {
-          return _buildDownloadPrompt();
-        } else if (status == CollectionStatus.downloaded) {
-          return _buildPlayer();
-        } else {
-          return const SizedBox(
-            height: 150,
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildDownloadPrompt() {
-    return Container(
-      height: 160,
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.primaryContainer,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "This album is not downloaded.",
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => _homeManager.downloadCurrentCollection(),
-            icon: const Icon(Icons.download),
-            label: const Text("Download Album & Play"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDownloadingState() {
-    return Container(
-      height: 160,
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ValueListenableBuilder<String>(
-            valueListenable: _homeManager.downloadMessage,
-            builder: (_, msg, __) => Text(msg, textAlign: TextAlign.center),
-          ),
-          const SizedBox(height: 10),
-          ValueListenableBuilder<double>(
-            valueListenable: _homeManager.downloadProgress,
-            builder: (_, val, __) => LinearProgressIndicator(value: val),
-          ),
+          _buildPlayer(),
+          Expanded(child: _buildTrackList()),
         ],
       ),
     );
@@ -172,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    item?.artist ?? '',
+                    item?.artist ?? 'Select a track below',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -195,7 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Loop Mode
               ValueListenableBuilder<LoopMode>(
                 valueListenable: _audioManager.loopModeNotifier,
                 builder: (context, loopMode, _) {
@@ -212,14 +161,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               IconButton(
-                onPressed: _audioManager.previous,
+                onPressed: _homeManager.playPrevious,
                 icon: const Icon(Icons.skip_previous),
               ),
               ValueListenableBuilder<ButtonState>(
                 valueListenable: _audioManager.playButtonNotifier,
                 builder: (_, state, __) {
                   if (state == ButtonState.loading) {
-                    return const CircularProgressIndicator();
+                    return const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    );
                   }
                   final isPlaying = state == ButtonState.playing;
                   return IconButton(
@@ -232,45 +184,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               IconButton(
-                onPressed: _audioManager.next,
+                onPressed: _homeManager.playNext,
                 icon: const Icon(Icons.skip_next),
               ),
-              // Shuffle
-              // Menu (Export / Share / Favorite)
-              ValueListenableBuilder<MediaItem?>(
-                valueListenable: _audioManager.currentSongNotifier,
-                builder: (context, mediaItem, _) {
-                  final isEnabled = mediaItem != null;
-                  return PopupMenuButton<String>(
-                    enabled: isEnabled,
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) {
-                      if (!isEnabled) return;
-                      try {
-                        final song = _homeManager
-                            .songs
-                            .value[_homeManager.currentCollection.value]!
-                            .firstWhere((s) => s.id == mediaItem.id);
-
-                        if (value == 'share') {
-                          _homeManager.shareSong(song);
-                        }
-                      } catch (e) {
-                        print('Song not found for menu action: $e');
-                      }
-                    },
-                    itemBuilder: (BuildContext context) =>
-                        <PopupMenuEntry<String>>[
-                          // Consolidated into one option
-                          const PopupMenuItem<String>(
-                            value: 'share',
-                            child: ListTile(
-                              leading: Icon(Icons.share),
-                              title: Text('Share / Save'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
+              ValueListenableBuilder<bool>(
+                valueListenable: _audioManager.shuffleModeNotifier,
+                builder: (context, isShuffle, _) {
+                  return IconButton(
+                    icon: const Icon(Icons.shuffle),
+                    color: isShuffle
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey,
+                    onPressed: _audioManager.toggleShuffle,
                   );
                 },
               ),
@@ -281,79 +206,78 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSongList() {
-    return ValueListenableBuilder<String>(
-      valueListenable: _homeManager.currentCollection,
-      builder: (context, collection, _) {
-        return ValueListenableBuilder<Map<String, List<Song>>>(
-          valueListenable: _homeManager.songs,
-          builder: (context, songsMap, _) {
-            final songList = songsMap[collection] ?? [];
-            return _buildSongListView(songList);
-          },
-        );
-      },
-    );
-  }
+  Widget _buildTrackList() {
+    return ValueListenableBuilder<List<Track>>(
+      valueListenable: _homeManager.currentTracks,
+      builder: (context, tracks, _) {
+        if (tracks.isEmpty) {
+          return const Center(child: Text("No tracks found."));
+        }
 
-  Widget _buildSongListView(List<Song> songList) {
-    return ValueListenableBuilder<MediaItem?>(
-      valueListenable: _audioManager.currentSongNotifier,
-      builder: (context, currentMediaItem, _) {
-        return ListView.builder(
-          controller: _scrollController,
-          itemCount: songList.length,
-          itemExtent: _itemHeight,
-          itemBuilder: (context, index) {
-            final song = songList[index];
-            final isPlaying = currentMediaItem?.id == song.id;
+        return ValueListenableBuilder<MediaItem?>(
+          valueListenable: _audioManager.currentSongNotifier,
+          builder: (context, currentMediaItem, _) {
+            return ValueListenableBuilder<Map<String, TrackStatus>>(
+              valueListenable: _homeManager.trackStatuses,
+              builder: (context, statuses, _) {
+                return ListView.builder(
+                  controller: _scrollController,
+                  itemCount: tracks.length,
+                  itemExtent: _itemHeight,
+                  itemBuilder: (context, index) {
+                    final track = tracks[index];
+                    final isPlaying = currentMediaItem?.id == track.id;
+                    final status =
+                        statuses[track.id] ?? TrackStatus.notDownloaded;
 
-            return ListTile(
-              dense: false,
-              title: Text(
-                '${index + 1}. ${song.title}', // Simplified index display
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
-                  color: isPlaying
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-              ),
-              subtitle: Text(
-                song.reference,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              selected: isPlaying,
-              trailing: _homeManager.currentCollection.value != 'favorites'
-                  ? ValueListenableBuilder<List<Song>>(
-                      valueListenable: _homeManager.favoritesNotifier,
-                      builder: (_, favs, __) {
-                        final isFav = _homeManager.isFavorite(song);
-                        return IconButton(
-                          icon: Icon(
-                            isFav ? Icons.favorite : Icons.favorite_border,
+                    return ListTile(
+                      title: Text(
+                        '${index + 1}. ${track.title}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: isPlaying
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: isPlaying
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                      subtitle: Text(
+                        track.reference,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      selected: isPlaying,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Favorite Button
+                          ValueListenableBuilder<List<Track>>(
+                            valueListenable: _homeManager.favoritesNotifier,
+                            builder: (_, favs, __) {
+                              final isFav = _homeManager.isFavorite(track);
+                              return IconButton(
+                                icon: Icon(
+                                  isFav
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                ),
+                                onPressed: () =>
+                                    _homeManager.toggleFavorite(track),
+                              );
+                            },
                           ),
-                          onPressed: () => _homeManager.toggleFavorite(song),
-                        );
-                      },
-                    )
-                  : null,
-              onTap: () {
-                // Only allow playing if album is downloaded
-                if (_homeManager.collectionStatus.value ==
-                    CollectionStatus.downloaded) {
-                  _audioManager.seekToStats(index);
-                  _audioManager.play();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please download the album first'),
-                    ),
-                  );
-                }
+
+                          // Download Status / Menu
+                          _buildTrackAction(track, status),
+                        ],
+                      ),
+                      onTap: () => _homeManager.playTrack(track),
+                    );
+                  },
+                );
               },
             );
           },
@@ -362,54 +286,115 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildTrackAction(Track track, TrackStatus status) {
+    if (status == TrackStatus.downloading) {
+      return ValueListenableBuilder<Map<String, double>>(
+        valueListenable: _homeManager.trackProgresses,
+        builder: (context, progresses, _) {
+          final progress = progresses[track.id] ?? 0.0;
+          return Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(value: progress, strokeWidth: 3),
+            ),
+          );
+        },
+      );
+    } else if (status == TrackStatus.notDownloaded) {
+      return IconButton(
+        icon: const Icon(Icons.cloud_download_outlined),
+        onPressed: () => _homeManager.downloadTrack(track),
+      );
+    } else {
+      // Downloaded: Show menu (Delete, Share)
+      return PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        onSelected: (value) {
+          if (value == 'delete') _homeManager.deleteTrack(track);
+          if (value == 'share') _homeManager.shareTrack(track);
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(value: 'share', child: Text('Share / Save')),
+          const PopupMenuItem(value: 'delete', child: Text('Remove Download')),
+        ],
+      );
+    }
+  }
+
   Widget _buildDrawer() {
     return Drawer(
       width: 200,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          Image.asset(
-            'assets/logo.jpg',
-            height: 200,
-            width: 200,
-            fit: BoxFit.cover,
-          ),
-          ListTile(
-            title: const Text('Philippians'),
-            onTap: () {
-              Navigator.pop(context);
-              _homeManager.loadCollection('philippians');
-            },
-          ),
-          ListTile(
-            title: const Text('Favorites'),
-            onTap: () {
-              Navigator.pop(context);
-              _homeManager.loadCollection('favorites');
-            },
-          ),
-          const Divider(),
-          ListTile(
-            title: const Text('Settings'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      child: FutureBuilder<Catalog>(
+        future: getIt<ApiService>().getCatalog(),
+        builder: (context, snapshot) {
+          final List<Widget> menuItems = [
+            Image.asset(
+              'assets/logo.jpg',
+              height: 200,
+              width: 200,
+              fit: BoxFit.cover,
+            ),
+          ];
+
+          if (snapshot.hasData) {
+            // Dynamically add collections from JSON
+            for (var collection in snapshot.data!.collections) {
+              menuItems.add(
+                ListTile(
+                  title: Text(collection.title),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _homeManager.loadCollection(collection.id);
+                  },
+                ),
               );
-            },
-          ),
-          ListTile(
-            title: const Text('About'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AboutScreen()),
-              );
-            },
-          ),
-        ],
+            }
+          } else {
+            // Loading state for drawer
+            menuItems.add(
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            );
+          }
+
+          // Add Favorites and Settings at the bottom
+          menuItems.addAll([
+            ListTile(
+              title: const Text('Favorites'),
+              onTap: () {
+                Navigator.pop(context);
+                _homeManager.loadCollection('favorites');
+              },
+            ),
+            const Divider(),
+            ListTile(
+              title: const Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              title: const Text('About'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AboutScreen()),
+                );
+              },
+            ),
+          ]);
+
+          return ListView(padding: EdgeInsets.zero, children: menuItems);
+        },
       ),
     );
   }
