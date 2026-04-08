@@ -105,7 +105,7 @@ class AudioManager {
       // Detect when playback reaches the end
       if (processingState == ProcessingState.completed) {
         if (_audioPlayer.loopMode == LoopMode.off &&
-            _audioPlayer.currentIndex == _audioPlayer.sequence!.length - 1) {
+            _audioPlayer.currentIndex == _audioPlayer.sequence.length - 1) {
           _audioPlayer.seek(Duration.zero, index: 0);
           _audioPlayer.pause();
         }
