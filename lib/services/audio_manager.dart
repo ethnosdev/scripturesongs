@@ -61,8 +61,7 @@ class AudioManager {
       if (index != -1) {
         initialIndex = index;
       } else {
-        initialPosition =
-            Duration.zero; // fallback if requested track wasn't found
+        initialPosition = Duration.zero;
       }
     }
 
@@ -126,7 +125,9 @@ class AudioManager {
   void previous() => _audioPlayer.seekToPrevious();
   void next() => _audioPlayer.seekToNext();
 
-  void seekToStats(int index) => _audioPlayer.seek(Duration.zero, index: index);
+  // Changed to an async Future so we can wait for the seek to finish before playing.
+  Future<void> seekToStats(int index) async =>
+      await _audioPlayer.seek(Duration.zero, index: index);
 
   void stop() async {
     await _audioPlayer.stop();

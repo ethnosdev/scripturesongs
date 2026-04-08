@@ -82,10 +82,67 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
       drawer: _buildDrawer(),
-      body: Column(
+      body: ValueListenableBuilder<List<Track>>(
+        valueListenable: _homeManager.currentTracks,
+        builder: (context, tracks, _) {
+          return ValueListenableBuilder<Map<String, TrackStatus>>(
+            valueListenable: _downloadManager.trackStatuses,
+            builder: (context, statuses, _) {
+              // Show player if collection is empty, OR if any track is downloaded/downloading.
+              final showPlayer =
+                  tracks.isEmpty ||
+                  tracks.any((t) {
+                    final status = statuses[t.id] ?? TrackStatus.notDownloaded;
+                    return status != TrackStatus.notDownloaded;
+                  });
+
+              return Column(
+                children: [
+                  if (showPlayer) _buildPlayer() else _buildDownloadAllHeader(),
+
+                  Expanded(child: _buildTrackListWithData(tracks, statuses)),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDownloadAllHeader() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildPlayer(),
-          Expanded(child: _buildTrackList()),
+          Icon(
+            Icons.cloud_download_outlined,
+            size: 48,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No songs downloaded',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            icon: const Icon(Icons.download),
+            label: const Text('Download all songs'),
+            onPressed: () {
+              _homeManager.downloadAllCurrent();
+            },
+          ),
         ],
       ),
     );
@@ -204,96 +261,81 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildTrackList() {
-    return ValueListenableBuilder<List<Track>>(
-      valueListenable: _homeManager.currentTracks,
-      builder: (context, tracks, _) {
-        if (tracks.isEmpty) {
-          return const Center(child: Text("No tracks found."));
-        }
+  Widget _buildTrackListWithData(
+    List<Track> tracks,
+    Map<String, TrackStatus> statuses,
+  ) {
+    if (tracks.isEmpty) {
+      return const Center(child: Text("No tracks found."));
+    }
 
-        return ValueListenableBuilder<MediaItem?>(
-          valueListenable: _audioManager.currentSongNotifier,
-          builder: (context, currentMediaItem, _) {
-            return ValueListenableBuilder<Map<String, TrackStatus>>(
-              valueListenable: _downloadManager.trackStatuses,
-              builder: (context, statuses, _) {
-                return ListView.builder(
-                  controller: _scrollController,
-                  itemCount: tracks.length,
-                  itemExtent: _itemHeight,
-                  itemBuilder: (context, index) {
-                    final track = tracks[index];
-                    final isPlaying = currentMediaItem?.id == track.id;
-                    final status =
-                        statuses[track.id] ?? TrackStatus.notDownloaded;
+    return ValueListenableBuilder<MediaItem?>(
+      valueListenable: _audioManager.currentSongNotifier,
+      builder: (context, currentMediaItem, _) {
+        return ListView.builder(
+          controller: _scrollController,
+          itemCount: tracks.length,
+          itemExtent: _itemHeight,
+          itemBuilder: (context, index) {
+            final track = tracks[index];
+            final isPlaying = currentMediaItem?.id == track.id;
+            final status = statuses[track.id] ?? TrackStatus.notDownloaded;
 
-                    return ListTile(
-                      title: Text(
-                        '${index + 1}. ${track.title}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: isPlaying
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: isPlaying
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                        ),
-                      ),
-                      subtitle: Text(
-                        track.reference,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      selected: isPlaying,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Small indicator if active download requested by click
-                          if (status == TrackStatus.downloading)
-                            ValueListenableBuilder<Map<String, double>>(
-                              valueListenable: _downloadManager.trackProgresses,
-                              builder: (context, progresses, _) {
-                                final progress = progresses[track.id] ?? 0.0;
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      value: progress,
-                                      strokeWidth: 3,
-                                    ),
-                                  ),
-                                );
-                              },
+            return ListTile(
+              title: Text(
+                '${index + 1}. ${track.title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+                  color: isPlaying
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+              ),
+              subtitle: Text(
+                track.reference,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              selected: isPlaying,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (status == TrackStatus.downloading)
+                    ValueListenableBuilder<Map<String, double>>(
+                      valueListenable: _downloadManager.trackProgresses,
+                      builder: (context, progresses, _) {
+                        final progress = progresses[track.id] ?? 0.0;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              value: progress,
+                              strokeWidth: 3,
                             ),
-
-                          // Favorite Button
-                          ValueListenableBuilder<List<Track>>(
-                            valueListenable: _homeManager.favoritesNotifier,
-                            builder: (_, favs, __) {
-                              final isFav = _homeManager.isFavorite(track);
-                              return IconButton(
-                                icon: Icon(
-                                  isFav
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                ),
-                                onPressed: () =>
-                                    _homeManager.toggleFavorite(track),
-                              );
-                            },
                           ),
-                        ],
-                      ),
-                      onTap: () => _homeManager.playTrack(track),
-                    );
-                  },
-                );
-              },
+                        );
+                      },
+                    ),
+
+                  ValueListenableBuilder<List<Track>>(
+                    valueListenable: _homeManager.favoritesNotifier,
+                    builder: (_, favs, __) {
+                      final isFav = _homeManager.isFavorite(track);
+                      return IconButton(
+                        icon: Icon(
+                          isFav ? Icons.favorite : Icons.favorite_border,
+                        ),
+                        onPressed: () => _homeManager.toggleFavorite(track),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              onTap: () => _homeManager.playTrack(track),
             );
           },
         );

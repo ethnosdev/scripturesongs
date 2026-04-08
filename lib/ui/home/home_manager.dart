@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:scripturesongs/models/catalog_models.dart';
 import 'package:scripturesongs/services/service_locator.dart';
@@ -36,6 +37,7 @@ class HomeManager {
   );
 
   Map<String, TrackStatus> _lastStatuses = {};
+  Completer<void>? _syncCompleter;
 
   // State restoration variables
   String? _initialTrackIdToRestore;
@@ -48,7 +50,6 @@ class HomeManager {
 
     _downloadManager.trackStatuses.addListener(_onTrackStatusesChanged);
 
-    // Listen for pauses to save state
     _audioManager.playButtonNotifier.addListener(() {
       if (_audioManager.playButtonNotifier.value == ButtonState.paused) {
         saveCurrentState();
@@ -114,7 +115,30 @@ class HomeManager {
     }
   }
 
+  /// Locks and safely syncs the playlist sequentially without overlapping calls
   Future<void> syncPlaylist() async {
+    // Wait in line if another sync is currently processing
+    while (_syncCompleter != null) {
+      await _syncCompleter!.future;
+    }
+
+    _syncCompleter = Completer<void>();
+
+    try {
+      await _performSyncPlaylist();
+    } finally {
+      _syncCompleter!.complete();
+      _syncCompleter = null;
+    }
+  }
+
+  Future<void> _performSyncPlaylist() async {
+    // Capture state to restore it seamlessly so background downloads don't interrupt playback
+    final currentTrack = _audioManager.currentSongNotifier.value;
+    final currentPosition = _audioManager.progressNotifier.value.current;
+    final wasPlaying =
+        _audioManager.playButtonNotifier.value == ButtonState.playing;
+
     final List<Track> downloadedTracks = [];
     final List<String> filePaths = [];
 
@@ -132,15 +156,23 @@ class HomeManager {
     }
 
     if (downloadedTracks.isNotEmpty) {
+      String? targetTrackId = currentTrack?.id ?? _initialTrackIdToRestore;
+      Duration? targetPosition = currentTrack != null
+          ? currentPosition
+          : _initialPositionToRestore;
+
       await _audioManager.setPlaylist(
         downloadedTracks,
         filePaths,
-        initialTrackId: _initialTrackIdToRestore,
-        initialPosition: _initialPositionToRestore,
+        initialTrackId: targetTrackId,
+        initialPosition: targetPosition,
       );
+
+      if (wasPlaying) {
+        _audioManager.play();
+      }
     }
 
-    // Clear restoration state so we don't jump back randomly on future playlist syncs
     _initialTrackIdToRestore = null;
     _initialPositionToRestore = null;
   }
@@ -156,6 +188,15 @@ class HomeManager {
         currentTrack.id,
         currentPosition,
       );
+    }
+  }
+
+  Future<void> downloadAllCurrent() async {
+    for (var track in currentTracks.value) {
+      if (_downloadManager.trackStatuses.value[track.id] ==
+          TrackStatus.notDownloaded) {
+        await _downloadManager.downloadTrack(track);
+      }
     }
   }
 
@@ -176,7 +217,9 @@ class HomeManager {
 
     final index = _audioManager.getIndexForTrackId(track.id);
     if (index != -1) {
-      _audioManager.seekToStats(index);
+      await _audioManager.seekToStats(
+        index,
+      ); // Must wait to finish seeking before play
       _audioManager.play();
     }
   }
