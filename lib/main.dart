@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:scripturesongs/app_state.dart';
+import 'package:scripturesongs/services/download_manager.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/user_settings.dart';
 import 'package:scripturesongs/ui/home/home_screen.dart';
@@ -15,6 +16,7 @@ Future<void> main() async {
   );
 
   setupLocator();
+  await getIt<DownloadManager>().init();
 
   final userSettings = getIt<UserSettings>();
   final hasSeenOnboarding = await userSettings.getHasSeenOnboarding();

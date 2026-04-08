@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:scripturesongs/models/catalog_models.dart';
 import 'package:scripturesongs/services/api_service.dart';
+import 'package:scripturesongs/services/download_manager.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:scripturesongs/ui/about/about_screen.dart';
+import 'package:scripturesongs/ui/downloads/downloads_screen.dart';
 import 'package:scripturesongs/ui/home/home_manager.dart';
 import 'package:scripturesongs/ui/settings/settings_screen.dart';
 
@@ -19,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _homeManager = getIt<HomeManager>();
   final _audioManager = getIt<AudioManager>();
+  final _downloadManager = getIt<DownloadManager>();
   final ScrollController _scrollController = ScrollController();
   final double _itemHeight = 72.0;
 
@@ -66,24 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
           valueListenable: _homeManager.collectionTitle,
           builder: (context, title, _) => Text(title),
         ),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'download_all') _homeManager.downloadAll();
-              if (value == 'delete_all') _homeManager.deleteAll();
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'download_all',
-                child: Text('Download All'),
-              ),
-              const PopupMenuItem(
-                value: 'delete_all',
-                child: Text('Delete All Downloads'),
-              ),
-            ],
-          ),
-        ],
       ),
       drawer: _buildDrawer(),
       body: Column(
@@ -218,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
           valueListenable: _audioManager.currentSongNotifier,
           builder: (context, currentMediaItem, _) {
             return ValueListenableBuilder<Map<String, TrackStatus>>(
-              valueListenable: _homeManager.trackStatuses,
+              valueListenable: _downloadManager.trackStatuses,
               builder: (context, statuses, _) {
                 return ListView.builder(
                   controller: _scrollController,
@@ -253,6 +238,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Small indicator if active download requested by click
+                          if (status == TrackStatus.downloading)
+                            ValueListenableBuilder<Map<String, double>>(
+                              valueListenable: _downloadManager.trackProgresses,
+                              builder: (context, progresses, _) {
+                                final progress = progresses[track.id] ?? 0.0;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      value: progress,
+                                      strokeWidth: 3,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
                           // Favorite Button
                           ValueListenableBuilder<List<Track>>(
                             valueListenable: _homeManager.favoritesNotifier,
@@ -270,8 +275,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
 
-                          // Download Status / Menu
-                          _buildTrackAction(track, status),
+                          // Share Button
+                          IconButton(
+                            icon: const Icon(Icons.share_outlined),
+                            onPressed: () => _homeManager.shareTrack(track),
+                          ),
                         ],
                       ),
                       onTap: () => _homeManager.playTrack(track),
@@ -284,43 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
-  }
-
-  Widget _buildTrackAction(Track track, TrackStatus status) {
-    if (status == TrackStatus.downloading) {
-      return ValueListenableBuilder<Map<String, double>>(
-        valueListenable: _homeManager.trackProgresses,
-        builder: (context, progresses, _) {
-          final progress = progresses[track.id] ?? 0.0;
-          return Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(value: progress, strokeWidth: 3),
-            ),
-          );
-        },
-      );
-    } else if (status == TrackStatus.notDownloaded) {
-      return IconButton(
-        icon: const Icon(Icons.cloud_download_outlined),
-        onPressed: () => _homeManager.downloadTrack(track),
-      );
-    } else {
-      // Downloaded: Show menu (Delete, Share)
-      return PopupMenuButton<String>(
-        icon: const Icon(Icons.more_vert),
-        onSelected: (value) {
-          if (value == 'delete') _homeManager.deleteTrack(track);
-          if (value == 'share') _homeManager.shareTrack(track);
-        },
-        itemBuilder: (context) => [
-          const PopupMenuItem(value: 'share', child: Text('Share / Save')),
-          const PopupMenuItem(value: 'delete', child: Text('Remove Download')),
-        ],
-      );
-    }
   }
 
   Widget _buildDrawer() {
@@ -339,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ];
 
           if (snapshot.hasData) {
-            // Dynamically add collections from JSON
             for (var collection in snapshot.data!.collections) {
               menuItems.add(
                 ListTile(
@@ -352,7 +322,6 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             }
           } else {
-            // Loading state for drawer
             menuItems.add(
               const Padding(
                 padding: EdgeInsets.all(16.0),
@@ -361,10 +330,10 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          // Add Favorites and Settings at the bottom
           menuItems.addAll([
             ListTile(
               title: const Text('Favorites'),
+              leading: const Icon(Icons.favorite),
               onTap: () {
                 Navigator.pop(context);
                 _homeManager.loadCollection('favorites');
@@ -372,7 +341,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Divider(),
             ListTile(
+              title: const Text('Downloads'),
+              leading: const Icon(Icons.download),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DownloadsScreen()),
+                );
+              },
+            ),
+            ListTile(
               title: const Text('Settings'),
+              leading: const Icon(Icons.settings),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -383,6 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               title: const Text('About'),
+              leading: const Icon(Icons.info),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
