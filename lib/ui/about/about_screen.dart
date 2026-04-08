@@ -1,71 +1,102 @@
 import 'dart:io';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Required for Clipboard
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
   @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  bool _isCopied = false;
+
+  void _copyEmail() {
+    Clipboard.setData(const ClipboardData(text: 'contact@ethnos.dev'));
+    setState(() => _isCopied = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _isCopied = false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final baseStyle = Theme.of(
-      context,
-    ).textTheme.bodyLarge?.copyWith(fontSize: 16);
-    // Define the link style (primary color + underline)
+    final theme = Theme.of(context);
+    final baseStyle = theme.textTheme.bodyLarge?.copyWith(fontSize: 16);
     final linkStyle = baseStyle?.copyWith(
-      color: Theme.of(context).colorScheme.primary,
+      color: theme.colorScheme.primary,
       decoration: TextDecoration.underline,
       fontWeight: FontWeight.bold,
     );
+
     return Scaffold(
       appBar: AppBar(title: const Text('About')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SelectableText(
+            const Text(
               'Scripture Songs',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             FutureBuilder<PackageInfo>(
               future: PackageInfo.fromPlatform(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  final version = snapshot.data!.version;
-                  return SelectableText('Version: $version', style: baseStyle);
-                }
-                // Placeholder while loading
-                return SelectableText('Version: ...', style: baseStyle);
-              },
+              builder: (context, snapshot) => Text(
+                'Version: ${snapshot.data?.version ?? '...'}',
+                style: baseStyle,
+              ),
             ),
-            const SizedBox(height: 20),
-            SelectableText.rich(
-              TextSpan(
+            const SizedBox(height: 24),
+            Text(
+              "This is a project to put the words of the entire Bible to music. We believe that God's word should be available without cost and without restriction. All of the songs in this app are free to listen to, free to download, free to share, and free to modify.",
+              style: baseStyle,
+            ),
+            const SizedBox(height: 16),
+            RichText(
+              text: TextSpan(
                 children: [
-                  const TextSpan(text: 'The lyrics come from the '),
+                  TextSpan(
+                    text: "The lyrics are the plain text of the ",
+                    style: baseStyle,
+                  ),
                   TextSpan(
                     text: 'Berean Standard Bible',
                     style: linkStyle,
                     recognizer: TapGestureRecognizer()
                       ..onTap = () => _launchBSBApp(context),
                   ),
-                  const TextSpan(
+                  TextSpan(
                     text:
-                        ' (a modern translation without copyright). The music was made with a paid account of Suno, which gives the song rights to the creator, who has then dedicated the songs to the public domain (CC0). Share or modify them as you like. No attribution required.',
+                        ", a modern English translation from Hebrew and Greek that was released to the public domain in 2023.",
+                    style: baseStyle,
                   ),
                 ],
-                style: baseStyle,
               ),
             ),
-            const SizedBox(height: 20),
-            SelectableText(
-              'So far this app only contains Philippians. Wouldn\'t it be great to have the whole Bible in music and without copyright? If you would like to help put more of the Bible to music and dedicate it to the public domain, please contact EthnosDev at contact@ethnos.dev.',
+            const SizedBox(height: 16),
+            Text(
+              "The music and voices were generated with Suno AI. Our goal is to create a select list of high quality songs that make it enjoyable to listen to scripture. We are not interested in mass producing AI slop.",
               style: baseStyle,
             ),
+            const SizedBox(height: 16),
+            Text(
+              "If you would like to join this project and put one book or chapter of the Bible to music, please contact us.",
+              style: baseStyle,
+            ),
+            const SizedBox(height: 40),
+            Center(
+              child: FilledButton.tonal(
+                onPressed: _copyEmail,
+                child: Text(_isCopied ? 'Copied!' : 'contact@ethnos.dev'),
+              ),
+            ),
+            const SizedBox(height: 200),
           ],
         ),
       ),
@@ -74,32 +105,24 @@ class AboutScreen extends StatelessWidget {
 
   Future<void> _launchBSBApp(BuildContext context) async {
     Uri url;
-
     if (Platform.isAndroid) {
-      // Link to EthnosDev's BSB app on Google Play
       url = Uri.parse(
         'https://play.google.com/store/apps/details?id=dev.ethnos.bsb',
       );
     } else if (Platform.isIOS) {
-      // Link to EthnosDev's BSB app on Apple App Store
       url = Uri.parse(
         'https://apps.apple.com/gb/app/berean-standard-bible/id6740620392',
       );
     } else {
-      // Fallback for web/desktop to the website
       url = Uri.parse('https://berean.bible');
     }
 
-    try {
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open the app store link.')),
-          );
-        }
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the app store link.')),
+        );
       }
-    } catch (e) {
-      print('Error launching URL: $e');
     }
   }
 }
