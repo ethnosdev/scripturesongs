@@ -59,11 +59,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final index = currentList.indexWhere((t) => t.id == mediaItem.id);
 
     if (index != -1 && _scrollController.hasClients) {
-      final double position = index * _itemHeight;
+      final double rawPosition = index * _itemHeight;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
+          final maxScroll = _scrollController.position.maxScrollExtent;
+          final targetPosition = rawPosition.clamp(0.0, maxScroll);
+
           _scrollController.animateTo(
-            position,
+            targetPosition,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
           );
