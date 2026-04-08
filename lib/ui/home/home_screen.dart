@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // Song Info
           ValueListenableBuilder<MediaItem?>(
             valueListenable: _audioManager.currentSongNotifier,
-            builder: (_, item, __) {
+            builder: (_, item, _) {
               return Column(
                 children: [
                   Text(
@@ -222,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               ValueListenableBuilder<ButtonState>(
                 valueListenable: _audioManager.playButtonNotifier,
-                builder: (_, state, __) {
+                builder: (_, state, _) {
                   if (state == ButtonState.loading) {
                     return const Padding(
                       padding: EdgeInsets.all(8.0),
@@ -326,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                   ValueListenableBuilder<List<Track>>(
                     valueListenable: _homeManager.favoritesNotifier,
-                    builder: (_, favs, __) {
+                    builder: (_, favs, _) {
                       final isFav = _homeManager.isFavorite(track);
                       return IconButton(
                         icon: Icon(

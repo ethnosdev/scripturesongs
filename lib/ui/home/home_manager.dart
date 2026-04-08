@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:scripturesongs/models/catalog_models.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/api_service.dart';
@@ -212,8 +213,9 @@ class HomeManager {
     }
 
     if (_downloadManager.trackStatuses.value[track.id] !=
-        TrackStatus.downloaded)
+        TrackStatus.downloaded) {
       return;
+    }
 
     final index = _audioManager.getIndexForTrackId(track.id);
     if (index != -1) {
@@ -236,8 +238,15 @@ class HomeManager {
       (t) => t.id == currentItem.id,
     );
 
+    // If there is a next track, play it
     if (currentIndex != -1 && currentIndex < currentTracks.value.length - 1) {
       await playTrack(currentTracks.value[currentIndex + 1]);
+    }
+    // If we are at the end and loop mode is off, jump to the first track
+    else if (currentIndex == currentTracks.value.length - 1 &&
+        _audioManager.loopModeNotifier.value == LoopMode.off) {
+      await _audioManager.seekToIndex(0);
+      _audioManager.pause(); // Reset to start but stay paused
     }
   }
 

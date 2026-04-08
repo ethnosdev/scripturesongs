@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 import 'package:scripturesongs/models/catalog_models.dart';
@@ -80,7 +82,7 @@ class DownloadManager {
         throw Exception('HTTP Failed');
       }
     } catch (e) {
-      print('Download error: $e');
+      log('Download error: $e');
       trackStatuses.value = {
         ...trackStatuses.value,
         track.id: TrackStatus.notDownloaded,

@@ -102,6 +102,15 @@ class AudioManager {
       final isPlaying = playerState.playing;
       final processingState = playerState.processingState;
 
+      // Detect when playback reaches the end
+      if (processingState == ProcessingState.completed) {
+        if (_audioPlayer.loopMode == LoopMode.off &&
+            _audioPlayer.currentIndex == _audioPlayer.sequence!.length - 1) {
+          _audioPlayer.seek(Duration.zero, index: 0);
+          _audioPlayer.pause();
+        }
+      }
+
       if (processingState == ProcessingState.loading ||
           processingState == ProcessingState.buffering) {
         playButtonNotifier.value = ButtonState.loading;
@@ -119,7 +128,18 @@ class AudioManager {
   void pause() => _audioPlayer.pause();
   void seek(Duration position) => _audioPlayer.seek(position);
   void previous() => _audioPlayer.seekToPrevious();
-  void next() => _audioPlayer.seekToNext();
+
+  Future<void> seekToIndex(int index) async {
+    await _audioPlayer.seek(Duration.zero, index: index);
+  }
+
+  Future<bool> next() async {
+    if (_audioPlayer.hasNext) {
+      await _audioPlayer.seekToNext();
+      return true;
+    }
+    return false;
+  }
 
   // Changed to an async Future so we can wait for the seek to finish before playing.
   Future<void> seekToStats(int index) async =>
