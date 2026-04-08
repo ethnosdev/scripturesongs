@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import 'package:scripturesongs/models/catalog_models.dart'; // UPDATED: Using new models
+import 'package:scripturesongs/models/catalog_models.dart';
 
 class AudioManager {
   final _audioPlayer = AudioPlayer();
@@ -11,7 +11,6 @@ class AudioManager {
   final isLastSongNotifier = ValueNotifier<bool>(true);
   final playButtonNotifier = ValueNotifier<ButtonState>(ButtonState.paused);
   final loopModeNotifier = ValueNotifier<LoopMode>(LoopMode.off);
-  final shuffleModeNotifier = ValueNotifier<bool>(false);
 
   final progressNotifier = ValueNotifier<ProgressBarState>(
     ProgressBarState(
@@ -34,7 +33,6 @@ class AudioManager {
     _listenForLoopMode();
   }
 
-  /// Loads the downloaded tracks into the player as a playlist
   Future<void> setPlaylist(List<Track> tracks, List<String> filePaths) async {
     if (tracks.length != filePaths.length) return;
 
@@ -59,7 +57,6 @@ class AudioManager {
     );
   }
 
-  /// NEW: Finds the playlist index of a specific track ID
   int getIndexForTrackId(String trackId) {
     final sequence = _audioPlayer.sequence;
     if (sequence == null) return -1;
@@ -86,7 +83,6 @@ class AudioManager {
       isFirstSongNotifier.value = currentIndex == 0;
       isLastSongNotifier.value =
           currentIndex == sequenceState.sequence.length - 1;
-      shuffleModeNotifier.value = sequenceState.shuffleModeEnabled;
     });
   }
 
@@ -129,12 +125,6 @@ class AudioManager {
       LoopMode.one => LoopMode.off,
     };
     _audioPlayer.setLoopMode(next);
-  }
-
-  void toggleShuffle() {
-    final enable = !shuffleModeNotifier.value;
-    _audioPlayer.setShuffleModeEnabled(enable);
-    if (enable) _audioPlayer.shuffle();
   }
 
   void _listenForLoopMode() {

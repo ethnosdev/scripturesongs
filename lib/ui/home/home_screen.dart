@@ -172,15 +172,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: _homeManager.playNext,
                 icon: const Icon(Icons.skip_next),
               ),
-              ValueListenableBuilder<bool>(
-                valueListenable: _audioManager.shuffleModeNotifier,
-                builder: (context, isShuffle, _) {
+              ValueListenableBuilder<MediaItem?>(
+                valueListenable: _audioManager.currentSongNotifier,
+                builder: (context, currentItem, _) {
                   return IconButton(
-                    icon: const Icon(Icons.shuffle),
-                    color: isShuffle
-                        ? Theme.of(context).colorScheme.primary
+                    icon: const Icon(Icons.share_outlined),
+                    color: currentItem != null
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
                         : Colors.grey,
-                    onPressed: _audioManager.toggleShuffle,
+                    onPressed: currentItem != null
+                        ? _homeManager.shareCurrentTrack
+                        : null,
                   );
                 },
               ),
@@ -273,12 +275,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     _homeManager.toggleFavorite(track),
                               );
                             },
-                          ),
-
-                          // Share Button
-                          IconButton(
-                            icon: const Icon(Icons.share_outlined),
-                            onPressed: () => _homeManager.shareTrack(track),
                           ),
                         ],
                       ),

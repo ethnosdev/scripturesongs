@@ -203,6 +203,36 @@ class HomeManager {
   bool isFavorite(Track track) => _favorites.contains(track);
 
   // --- Sharing ---
+
+  Future<void> shareCurrentTrack() async {
+    final currentItem = _audioManager.currentSongNotifier.value;
+    if (currentItem == null) return;
+
+    Track? trackToShare;
+
+    // Check current view first for speed
+    try {
+      trackToShare = currentTracks.value.firstWhere(
+        (t) => t.id == currentItem.id,
+      );
+    } catch (_) {
+      // Fallback: search entire catalog
+      final catalog = await _apiService.getCatalog();
+      for (var collection in catalog.collections) {
+        try {
+          trackToShare = collection.tracks.firstWhere(
+            (t) => t.id == currentItem.id,
+          );
+          break;
+        } catch (_) {}
+      }
+    }
+
+    if (trackToShare != null) {
+      await shareTrack(trackToShare);
+    }
+  }
+
   Future<void> shareTrack(Track track) async {
     final version = await _downloadManager.getActiveVersion(track);
     final file = await _storageService.getFileForVersion(version.id);
