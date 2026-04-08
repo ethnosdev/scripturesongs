@@ -74,8 +74,6 @@ class AudioManager {
 
   int getIndexForTrackId(String trackId) {
     final sequence = _audioPlayer.sequence;
-    if (sequence == null) return -1;
-
     for (int i = 0; i < sequence.length; i++) {
       final tag = sequence[i].tag;
       if (tag is MediaItem && tag.id == trackId) {
@@ -87,8 +85,6 @@ class AudioManager {
 
   void _listenForSequenceState() {
     _audioPlayer.sequenceStateStream.listen((sequenceState) {
-      if (sequenceState == null) return;
-
       final currentItem = sequenceState.currentSource;
       if (currentItem?.tag is MediaItem) {
         currentSongNotifier.value = currentItem!.tag as MediaItem;
