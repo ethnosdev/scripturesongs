@@ -129,7 +129,7 @@ class _TrackDownloadTile extends StatelessWidget {
       );
     } else {
       return IconButton(
-        icon: const Icon(Icons.delete_outline, color: Colors.red),
+        icon: const Icon(Icons.delete_outline),
         onPressed: () => manager.deleteTrack(track),
       );
     }

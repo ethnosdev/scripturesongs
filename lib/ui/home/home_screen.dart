@@ -340,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           menuItems.addAll([
             ListTile(
               title: const Text('Favorites'),
-              leading: const Icon(Icons.favorite),
               onTap: () {
                 Navigator.pop(context);
                 _homeManager.loadCollection('favorites');
@@ -349,7 +348,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const Divider(),
             ListTile(
               title: const Text('Downloads'),
-              leading: const Icon(Icons.download),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -360,7 +358,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             ListTile(
               title: const Text('Settings'),
-              leading: const Icon(Icons.settings),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -371,7 +368,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             ListTile(
               title: const Text('About'),
-              leading: const Icon(Icons.info),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
