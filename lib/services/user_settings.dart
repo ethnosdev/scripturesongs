@@ -7,6 +7,9 @@ class UserSettings {
   static const String _favoritesKey = 'favorite_song_ids';
   static const String _onboardingKey = 'has_seen_onboarding';
   static const String _preferredVersionPrefix = 'pref_version_';
+  static const String _lastCollectionKey = 'last_collection';
+  static const String _lastTrackKey = 'last_track';
+  static const String _lastPositionKey = 'last_position_ms';
 
   // --- Theme ---
   Future<ThemeMode> getThemeMode() async {
@@ -86,5 +89,33 @@ class UserSettings {
   Future<void> setPreferredVersion(String trackId, String versionId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_preferredVersionPrefix$trackId', versionId);
+  }
+
+  // --- Playback State ---
+  Future<void> savePlaybackState(
+    String collectionId,
+    String trackId,
+    Duration position,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastCollectionKey, collectionId);
+    await prefs.setString(_lastTrackKey, trackId);
+    await prefs.setInt(_lastPositionKey, position.inMilliseconds);
+  }
+
+  Future<Map<String, dynamic>?> getPlaybackState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final collectionId = prefs.getString(_lastCollectionKey);
+    final trackId = prefs.getString(_lastTrackKey);
+    final positionMs = prefs.getInt(_lastPositionKey);
+
+    if (collectionId != null && trackId != null && positionMs != null) {
+      return {
+        'collectionId': collectionId,
+        'trackId': trackId,
+        'position': Duration(milliseconds: positionMs),
+      };
+    }
+    return null;
   }
 }

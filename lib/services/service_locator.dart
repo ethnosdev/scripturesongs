@@ -16,5 +16,5 @@ void setupLocator() {
   getIt.registerLazySingleton<DownloadManager>(() => DownloadManager());
   getIt.registerLazySingleton<AppState>(() => AppState(getIt<UserSettings>()));
   getIt.registerLazySingleton<AudioManager>(() => AudioManager());
-  getIt.registerFactory<HomeManager>(() => HomeManager());
+  getIt.registerLazySingleton<HomeManager>(() => HomeManager());
 }

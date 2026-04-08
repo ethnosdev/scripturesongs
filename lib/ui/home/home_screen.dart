@@ -18,7 +18,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _homeManager = getIt<HomeManager>();
   final _audioManager = getIt<AudioManager>();
   final _downloadManager = getIt<DownloadManager>();
@@ -28,14 +28,25 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _audioManager.currentSongNotifier.addListener(_scrollToCurrentSong);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _audioManager.currentSongNotifier.removeListener(_scrollToCurrentSong);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _homeManager.saveCurrentState();
+    }
   }
 
   void _scrollToCurrentSong() {

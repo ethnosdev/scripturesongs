@@ -37,6 +37,10 @@ class HomeManager {
 
   Map<String, TrackStatus> _lastStatuses = {};
 
+  // State restoration variables
+  String? _initialTrackIdToRestore;
+  Duration? _initialPositionToRestore;
+
   HomeManager() {
     _audioManager.progressNotifier.addListener(() {
       progressNotifier.value = _audioManager.progressNotifier.value;
@@ -44,8 +48,25 @@ class HomeManager {
 
     _downloadManager.trackStatuses.addListener(_onTrackStatusesChanged);
 
-    _initFavorites();
-    loadCollection('philippians'); // Default startup collection
+    // Listen for pauses to save state
+    _audioManager.playButtonNotifier.addListener(() {
+      if (_audioManager.playButtonNotifier.value == ButtonState.paused) {
+        saveCurrentState();
+      }
+    });
+  }
+
+  Future<void> init() async {
+    await _initFavorites();
+
+    final state = await _userSettings.getPlaybackState();
+    if (state != null) {
+      _initialTrackIdToRestore = state['trackId'];
+      _initialPositionToRestore = state['position'];
+      await loadCollection(state['collectionId']);
+    } else {
+      await loadCollection('philippians');
+    }
   }
 
   // --- Core Logic ---
@@ -110,7 +131,32 @@ class HomeManager {
       }
     }
 
-    await _audioManager.setPlaylist(downloadedTracks, filePaths);
+    if (downloadedTracks.isNotEmpty) {
+      await _audioManager.setPlaylist(
+        downloadedTracks,
+        filePaths,
+        initialTrackId: _initialTrackIdToRestore,
+        initialPosition: _initialPositionToRestore,
+      );
+    }
+
+    // Clear restoration state so we don't jump back randomly on future playlist syncs
+    _initialTrackIdToRestore = null;
+    _initialPositionToRestore = null;
+  }
+
+  Future<void> saveCurrentState() async {
+    final currentTrack = _audioManager.currentSongNotifier.value;
+    final currentPosition = _audioManager.progressNotifier.value.current;
+    final currentCollection = currentCollectionId.value;
+
+    if (currentTrack != null && currentCollection.isNotEmpty) {
+      await _userSettings.savePlaybackState(
+        currentCollection,
+        currentTrack.id,
+        currentPosition,
+      );
+    }
   }
 
   // --- Playback ---
@@ -210,13 +256,11 @@ class HomeManager {
 
     Track? trackToShare;
 
-    // Check current view first for speed
     try {
       trackToShare = currentTracks.value.firstWhere(
         (t) => t.id == currentItem.id,
       );
     } catch (_) {
-      // Fallback: search entire catalog
       final catalog = await _apiService.getCatalog();
       for (var collection in catalog.collections) {
         try {

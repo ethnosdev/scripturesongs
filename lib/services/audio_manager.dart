@@ -33,8 +33,13 @@ class AudioManager {
     _listenForLoopMode();
   }
 
-  Future<void> setPlaylist(List<Track> tracks, List<String> filePaths) async {
-    if (tracks.length != filePaths.length) return;
+  Future<void> setPlaylist(
+    List<Track> tracks,
+    List<String> filePaths, {
+    String? initialTrackId,
+    Duration? initialPosition,
+  }) async {
+    if (tracks.isEmpty || tracks.length != filePaths.length) return;
 
     final List<AudioSource> audioSources = List.generate(tracks.length, (
       index,
@@ -50,10 +55,21 @@ class AudioManager {
       );
     });
 
+    int initialIndex = 0;
+    if (initialTrackId != null) {
+      final index = tracks.indexWhere((t) => t.id == initialTrackId);
+      if (index != -1) {
+        initialIndex = index;
+      } else {
+        initialPosition =
+            Duration.zero; // fallback if requested track wasn't found
+      }
+    }
+
     await _audioPlayer.setAudioSources(
       audioSources,
-      initialIndex: 0,
-      initialPosition: Duration.zero,
+      initialIndex: initialIndex,
+      initialPosition: initialPosition ?? Duration.zero,
     );
   }
 
