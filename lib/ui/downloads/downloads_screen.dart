@@ -38,6 +38,37 @@ class _CollectionDownloadTile extends StatelessWidget {
   final Collection collection;
   const _CollectionDownloadTile({required this.collection});
 
+  Future<void> _confirmDeleteAll(
+    BuildContext context,
+    DownloadManager manager,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Downloads'),
+          content: Text(
+            'Are you sure you want to delete all downloaded songs for ${collection.title}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text('Delete All'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      manager.deleteCollection(collection);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final downloadManager = getIt<DownloadManager>();
@@ -65,7 +96,7 @@ class _CollectionDownloadTile extends StatelessWidget {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.delete),
                   label: const Text('Delete All'),
-                  onPressed: () => downloadManager.deleteCollection(collection),
+                  onPressed: () => _confirmDeleteAll(context, downloadManager),
                 ),
               ),
             ],
@@ -129,7 +160,7 @@ class _TrackDownloadTile extends StatelessWidget {
       );
     } else {
       return IconButton(
-        icon: const Icon(Icons.delete_outline),
+        icon: Icon(Icons.delete_outline),
         onPressed: () => manager.deleteTrack(track),
       );
     }
