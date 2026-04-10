@@ -184,11 +184,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             builder: (_, item, _) {
               return Column(
                 children: [
-                  Text(
-                    item?.title ?? 'Ready to Play',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      item?.title ?? 'Ready to Play',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                      maxLines: 1,
+                    ),
                   ),
                   Text(
                     item?.artist ?? 'Select a track below',
