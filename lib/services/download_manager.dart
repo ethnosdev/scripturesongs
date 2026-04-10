@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 import 'package:scripturesongs/models/catalog_models.dart';
 import 'package:scripturesongs/services/api_service.dart';
+import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/storage_service.dart';
 import 'package:scripturesongs/services/user_settings.dart';
@@ -100,6 +101,12 @@ class DownloadManager {
   }
 
   Future<void> deleteTrack(Track track) async {
+    // Stop playback if this track is currently active
+    final audioManager = getIt<AudioManager>();
+    if (audioManager.currentSongNotifier.value?.id == track.id) {
+      audioManager.stop();
+    }
+
     final version = await getActiveVersion(track);
     await _storageService.deleteFile(version.id);
 
