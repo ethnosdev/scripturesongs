@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:scripturesongs/app_state.dart';
 import 'package:scripturesongs/services/download_manager.dart';
 import 'package:scripturesongs/services/service_locator.dart';
@@ -10,6 +13,9 @@ import 'package:scripturesongs/ui/onboarding/onboarding_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isAndroid) {
+    await Permission.notification.request();
+  }
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.ethnosdev.scripturesongs.channel.audio',
     androidNotificationChannelName: 'Audio playback',
