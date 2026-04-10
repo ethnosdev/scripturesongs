@@ -285,76 +285,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return const Center(child: Text("No tracks found."));
     }
 
-    return ValueListenableBuilder<MediaItem?>(
-      valueListenable: _audioManager.currentSongNotifier,
-      builder: (context, currentMediaItem, _) {
-        return ListView.builder(
-          controller: _scrollController,
-          itemCount: tracks.length,
-          itemExtent: _itemHeight,
-          itemBuilder: (context, index) {
-            final track = tracks[index];
-            final isPlaying = currentMediaItem?.id == track.id;
-            final status = statuses[track.id] ?? TrackStatus.notDownloaded;
-
-            return ListTile(
-              title: Text(
-                '${index + 1}. ${track.title}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
-                  color: isPlaying
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-              ),
-              subtitle: Text(
-                track.reference,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              selected: isPlaying,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (status == TrackStatus.downloading)
-                    ValueListenableBuilder<Map<String, double>>(
-                      valueListenable: _downloadManager.trackProgresses,
-                      builder: (context, progresses, _) {
-                        final progress = progresses[track.id] ?? 0.0;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              value: progress,
-                              strokeWidth: 3,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                  ValueListenableBuilder<List<Track>>(
-                    valueListenable: _homeManager.favoritesNotifier,
-                    builder: (_, favs, _) {
-                      final isFav = _homeManager.isFavorite(track);
-                      return IconButton(
-                        icon: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                        ),
-                        onPressed: () => _homeManager.toggleFavorite(track),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              onTap: () => _homeManager.playTrack(track),
-            );
-          },
-        );
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: tracks.length,
+      itemExtent: _itemHeight,
+      itemBuilder: (context, index) {
+        return _TrackListItem(track: tracks[index], index: index);
       },
     );
   }
@@ -439,6 +375,89 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return ListView(padding: EdgeInsets.zero, children: menuItems);
         },
       ),
+    );
+  }
+}
+
+class _TrackListItem extends StatelessWidget {
+  final Track track;
+  final int index;
+
+  const _TrackListItem({required this.track, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final homeManager = getIt<HomeManager>();
+    final audioManager = getIt<AudioManager>();
+    final downloadManager = getIt<DownloadManager>();
+
+    return ValueListenableBuilder<MediaItem?>(
+      valueListenable: audioManager.currentSongNotifier,
+      builder: (context, currentMediaItem, _) {
+        final isPlaying = currentMediaItem?.id == track.id;
+
+        return ListTile(
+          title: Text(
+            '${index + 1}. ${track.title}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+              color: isPlaying ? Theme.of(context).colorScheme.primary : null,
+            ),
+          ),
+          subtitle: Text(
+            track.reference,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          selected: isPlaying,
+          onTap: () => homeManager.playTrack(track),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Localized listener just for this track's status
+              ValueListenableBuilder<Map<String, TrackStatus>>(
+                valueListenable: downloadManager.trackStatuses,
+                builder: (context, statuses, _) {
+                  final status =
+                      statuses[track.id] ?? TrackStatus.notDownloaded;
+                  if (status == TrackStatus.downloading) {
+                    return ValueListenableBuilder<Map<String, double>>(
+                      valueListenable: downloadManager.trackProgresses,
+                      builder: (context, progresses, _) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              value: progresses[track.id] ?? 0.0,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+
+              ValueListenableBuilder<List<Track>>(
+                valueListenable: homeManager.favoritesNotifier,
+                builder: (_, favs, _) {
+                  final isFav = homeManager.isFavorite(track);
+                  return IconButton(
+                    icon: Icon(isFav ? Icons.favorite : Icons.favorite_border),
+                    onPressed: () => homeManager.toggleFavorite(track),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
