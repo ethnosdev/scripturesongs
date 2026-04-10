@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _audioManager.currentSongNotifier.addListener(_scrollToCurrentSong);
+    getIt<DownloadManager>().errorNotifier.addListener(_showErrorSnackBar);
   }
 
   @override
@@ -37,7 +38,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _audioManager.currentSongNotifier.removeListener(_scrollToCurrentSong);
     _scrollController.dispose();
+    getIt<DownloadManager>().errorNotifier.removeListener(_showErrorSnackBar);
     super.dispose();
+  }
+
+  void _showErrorSnackBar() {
+    final errorMsg = getIt<DownloadManager>().errorNotifier.value;
+    if (errorMsg != null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMsg)));
+      // Reset the error so it can fire again if needed
+      getIt<DownloadManager>().errorNotifier.value = null;
+    }
   }
 
   @override

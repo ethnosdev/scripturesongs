@@ -208,7 +208,9 @@ class HomeManager {
 
     if (status == TrackStatus.notDownloaded) {
       _audioManager.pause();
-      await _downloadManager.downloadTrack(track);
+      final success = await _downloadManager.downloadTrack(track);
+      if (!success) return;
+
       await syncPlaylist();
     }
 

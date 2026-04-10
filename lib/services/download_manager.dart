@@ -19,6 +19,7 @@ class DownloadManager {
     {},
   );
   final ValueNotifier<Map<String, double>> trackProgresses = ValueNotifier({});
+  final ValueNotifier<String?> errorNotifier = ValueNotifier(null);
 
   /// Scans file system to set initial download statuses for all tracks globally
   Future<void> init() async {
@@ -46,8 +47,8 @@ class DownloadManager {
     return track.versions.first;
   }
 
-  Future<void> downloadTrack(Track track) async {
-    if (trackStatuses.value[track.id] == TrackStatus.downloading) return;
+  Future<bool> downloadTrack(Track track) async {
+    if (trackStatuses.value[track.id] == TrackStatus.downloading) return true;
 
     final version = await getActiveVersion(track);
 
@@ -79,7 +80,7 @@ class DownloadManager {
         }
         await fileSink.close();
       } else {
-        throw Exception('HTTP Failed');
+        throw Exception('HTTP Failed with status code ${response.statusCode}');
       }
     } catch (e) {
       log('Download error: $e');
@@ -87,12 +88,15 @@ class DownloadManager {
         ...trackStatuses.value,
         track.id: TrackStatus.notDownloaded,
       };
-      return;
+      errorNotifier.value =
+          'Failed to download ${track.title}. Check your connection.';
+      return false;
     }
 
     final updatedStatuses = Map<String, TrackStatus>.from(trackStatuses.value);
     updatedStatuses[track.id] = TrackStatus.downloaded;
     trackStatuses.value = updatedStatuses;
+    return true;
   }
 
   Future<void> deleteTrack(Track track) async {
@@ -105,10 +109,15 @@ class DownloadManager {
   }
 
   Future<void> downloadCollection(Collection collection) async {
+    bool anyFailed = false;
     for (var track in collection.tracks) {
       if (trackStatuses.value[track.id] == TrackStatus.notDownloaded) {
-        await downloadTrack(track);
+        final success = await downloadTrack(track);
+        if (!success) anyFailed = true;
       }
+    }
+    if (anyFailed) {
+      errorNotifier.value = 'Some downloads failed. Check your connection.';
     }
   }
 
