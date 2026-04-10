@@ -3,6 +3,7 @@ import 'package:scripturesongs/app_state.dart';
 import 'package:scripturesongs/services/api_service.dart';
 import 'package:scripturesongs/services/audio_manager.dart';
 import 'package:scripturesongs/services/download_manager.dart';
+import 'package:scripturesongs/services/migration_service.dart';
 import 'package:scripturesongs/services/storage_service.dart';
 import 'package:scripturesongs/services/user_settings.dart';
 import 'package:scripturesongs/ui/home/home_manager.dart';
@@ -17,4 +18,5 @@ void setupLocator() {
   getIt.registerLazySingleton<AppState>(() => AppState(getIt<UserSettings>()));
   getIt.registerLazySingleton<AudioManager>(() => AudioManager());
   getIt.registerLazySingleton<HomeManager>(() => HomeManager());
+  getIt.registerLazySingleton<MigrationService>(() => MigrationService());
 }

@@ -5,6 +5,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:scripturesongs/app_state.dart';
 import 'package:scripturesongs/services/download_manager.dart';
+import 'package:scripturesongs/services/migration_service.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 import 'package:scripturesongs/services/user_settings.dart';
 import 'package:scripturesongs/ui/home/home_manager.dart';
@@ -23,6 +24,10 @@ Future<void> main() async {
   );
 
   setupLocator();
+
+  // TODO: delete the migration service after a time.
+  await getIt<MigrationService>().runMigration();
+
   await getIt<DownloadManager>().init();
   await getIt<HomeManager>().init();
 
