@@ -4,8 +4,35 @@ import 'package:scripturesongs/services/api_service.dart';
 import 'package:scripturesongs/services/download_manager.dart';
 import 'package:scripturesongs/services/service_locator.dart';
 
-class DownloadsScreen extends StatelessWidget {
+class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
+
+  @override
+  State<DownloadsScreen> createState() => _DownloadsScreenState();
+}
+
+class _DownloadsScreenState extends State<DownloadsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    getIt<DownloadManager>().errorNotifier.addListener(_showErrorSnackBar);
+  }
+
+  @override
+  void dispose() {
+    getIt<DownloadManager>().errorNotifier.removeListener(_showErrorSnackBar);
+    super.dispose();
+  }
+
+  void _showErrorSnackBar() {
+    final errorMsg = getIt<DownloadManager>().errorNotifier.value;
+    if (errorMsg != null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMsg)));
+      getIt<DownloadManager>().errorNotifier.value = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
