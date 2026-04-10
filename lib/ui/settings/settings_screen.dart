@@ -11,43 +11,60 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Theme', style: Theme.of(context).textTheme.headlineSmall),
-            ValueListenableBuilder<ThemeMode>(
-              valueListenable: appState.currentTheme,
-              builder: (context, themeMode, _) {
-                return RadioGroup<ThemeMode>(
-                  groupValue: themeMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      appState.updateTheme(value);
-                    }
-                  },
-                  child: Column(
-                    children: [
-                      RadioListTile<ThemeMode>(
-                        title: const Text('System Default'),
-                        value: ThemeMode.system,
+      body: ValueListenableBuilder<ThemeMode>(
+        valueListenable: appState.currentTheme,
+        builder: (context, themeMode, _) {
+          return ListView(
+            children: [
+              ListTile(
+                title: const Text('Light-Dark Theme'),
+                subtitle: Text(
+                  themeMode == ThemeMode.light
+                      ? 'Light'
+                      : themeMode == ThemeMode.dark
+                      ? 'Dark'
+                      : 'Match device settings',
+                ),
+                trailing: Icon(
+                  themeMode == ThemeMode.light
+                      ? Icons.light_mode
+                      : themeMode == ThemeMode.dark
+                      ? Icons.dark_mode
+                      : Icons.smartphone,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      content: SegmentedButton<ThemeMode>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.light,
+                            icon: Icon(Icons.light_mode),
+                          ),
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.system,
+                            icon: Icon(Icons.smartphone),
+                          ),
+                          ButtonSegment<ThemeMode>(
+                            value: ThemeMode.dark,
+                            icon: Icon(Icons.dark_mode),
+                          ),
+                        ],
+                        selected: {themeMode},
+                        onSelectionChanged: (Set<ThemeMode> selection) {
+                          appState.updateTheme(selection.first);
+                          Navigator.of(context).pop();
+                        },
                       ),
-                      RadioListTile<ThemeMode>(
-                        title: const Text('Light'),
-                        value: ThemeMode.light,
-                      ),
-                      RadioListTile<ThemeMode>(
-                        title: const Text('Dark'),
-                        value: ThemeMode.dark,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
